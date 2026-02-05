@@ -1469,12 +1469,18 @@ class FileAdapter(BaseDataAdapter):
                 return None
 
         try:
-            r1 = subprocess.Popen(
-                ["tail", "-n", "1", str(path)], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            )
-            r2, _ = r1.communicate()
-            if r2:
-                return json.loads(r2.decode().strip())
+            # Efficiently read last line using aiofiles
+            async with aiofiles.open(path, 'rb') as f:
+                try:
+                    await f.seek(-2, os.SEEK_END)
+                    while await f.read(1) != b'\n':
+                        await f.seek(-2, os.SEEK_CUR)
+                except OSError:
+                    await f.seek(0)
+
+                last_line = await f.readline()
+                if last_line:
+                    return json.loads(last_line.decode().strip())
         except Exception:
             pass
         return None
@@ -2077,7 +2083,7 @@ class FileAdapter(BaseDataAdapter):
         return resource_base_record
 
     async def delete_space(self, space_name, record, owner_shortname):
-        os.system(f"rm -r {settings.spaces_folder}/{space_name}")
+        shutil.rmtree(settings.spaces_folder / space_name, ignore_errors=True)
 
     async def get_last_updated_entry(
             self,

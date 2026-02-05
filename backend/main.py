@@ -280,14 +280,27 @@ async def middle(request: Request, call_next):
 
     try:
         response = await asyncio.wait_for(call_next(request), timeout=settings.request_timeout)
-        raw_response = [section async for section in response.body_iterator]
-        response.body_iterator = iterate_in_threadpool(iter(raw_response))
-        raw_data = b"".join(raw_response)
-        if raw_data:
-            try:
-                response_body = json.loads(raw_data)
-            except Exception:
-                response_body = {}
+
+        # Optimization: Skip body logging for large files or binary content
+        content_type = response.headers.get("content-type", "")
+        is_binary = any(t in content_type for t in ["image/", "video/", "application/zip", "application/octet-stream"])
+
+        # Check content length if available
+        content_length = response.headers.get("content-length")
+        is_large = content_length and int(content_length) > 1024 * 1024 # 1MB limit for logging
+
+        if not is_binary and not is_large:
+            raw_response = [section async for section in response.body_iterator]
+            response.body_iterator = iterate_in_threadpool(iter(raw_response))
+            raw_data = b"".join(raw_response)
+            if raw_data:
+                try:
+                    response_body = json.loads(raw_data)
+                except Exception:
+                    response_body = {}
+        else:
+            response_body = {"message": "Body content skipped (binary or too large)"}
+
     except asyncio.TimeoutError:
         response = ORJSONResponse(content={'status':'failed',
             'error': {"code":504, "message": 'Request processing time excedeed limit'}},

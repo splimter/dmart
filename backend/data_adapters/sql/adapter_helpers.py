@@ -1,7 +1,7 @@
 import json
 import re
-import subprocess
 from pathlib import Path
+import aiofiles
 
 import models.api as api
 import models.core as core
@@ -332,6 +332,7 @@ async def events_query(
         query: api.Query, user_shortname: str | None = None
 ) -> tuple[int, list[core.Record]]:
     from utils.access_control import access_control
+    from collections import deque
 
     records: list[core.Record] = []
     total: int = 0
@@ -340,60 +341,31 @@ async def events_query(
     if not path.is_file():
         return total, records
 
-    result = []
-    if query.search:
-        p = subprocess.Popen(
-            ["grep", f'"{query.search}"', path], stdout=subprocess.PIPE
-        )
-        p = subprocess.Popen(
-            ["tail", "-n", f"{query.limit + query.offset}"],
-            stdin=p.stdout,
-            stdout=subprocess.PIPE,
-        )
-        p = subprocess.Popen(["tac"], stdin=p.stdout, stdout=subprocess.PIPE)
-        if query.offset > 0:
-            p = subprocess.Popen(
-                ["sed", f"1,{query.offset}d"],
-                stdin=p.stdout,
-                stdout=subprocess.PIPE,
-            )
-        r, _ = p.communicate()
-        result = list(filter(None, r.decode("utf-8").split("\n")))
-    else:
-        cmd = f"(tail -n {query.limit + query.offset} {path}; echo) | tac"
-        if query.offset > 0:
-            cmd += f" | sed '1,{query.offset}d'"
-        result = list(
-            filter(
-                None,
-                subprocess.run(
-                    [cmd], capture_output=True, text=True, shell=True
-                ).stdout.split("\n"),
-            )
-        )
+    # Buffer for last (limit + offset) matching lines
+    buffer_size = query.limit + query.offset
+    last_lines = deque(maxlen=buffer_size)
 
-    if query.search:
-        p1 = subprocess.Popen(
-            ["grep", f'"{query.search}"', path], stdout=subprocess.PIPE
-        )
-        p2 = subprocess.Popen(["wc", "-l"], stdin=p1.stdout, stdout=subprocess.PIPE)
-        r, _ = p2.communicate()
-        total = int(
-            r.decode(),
-            10,
-        )
-    else:
-        total = int(
-            subprocess.run(
-                [f"wc -l < {path}"],
-                capture_output=True,
-                text=True,
-                shell=True,
-            ).stdout,
-            10,
-        )
-    for line in result:
-        action_obj = json.loads(line)
+    async with aiofiles.open(path, mode='r') as f:
+        async for line in f:
+            total += 1
+            if query.search and query.search not in line:
+                continue
+            last_lines.append(line)
+
+    result_lines = list(last_lines)
+    result_lines.reverse()
+
+    if query.offset > 0:
+        result_lines = result_lines[query.offset:]
+
+    result_lines = result_lines[:query.limit]
+
+    for line in result_lines:
+        try:
+            action_obj = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+
         if (
             query.from_date
             and str_to_datetime(action_obj["timestamp"]) < query.from_date
@@ -401,7 +373,7 @@ async def events_query(
             continue
 
         if query.to_date and str_to_datetime(action_obj["timestamp"]) > query.to_date:
-            break
+            continue
 
         if not await access_control.check_access(
                 user_shortname=str(user_shortname),

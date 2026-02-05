@@ -1096,8 +1096,11 @@ async def get_space_report(
             ),
         )
 
-    os.system(
-        f"./health_check.py -t {health_type} -s {space_name} &")
+    import subprocess
+    subprocess.Popen(
+        [sys.executable, "./health_check.py", "-t", health_type, "-s", space_name],
+        cwd=settings.base_path or ".",
+    )
     return api.Response(
         status=api.Status.success,
     )

@@ -1,6 +1,5 @@
 import json
 import os
-import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -765,54 +764,42 @@ async def serve_query_history(query, logged_in_user):
 
     path = Path(f"{settings.spaces_folder}/{query.space_name}/"
                 f"{query.subpath}/.dm/{query.filter_shortnames[0]}/history.jsonl")
+
     if path.is_file():
-        r1 = subprocess.Popen(
-            ["tail", "-n", f"+{query.offset}", path], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-        )
-        rn = subprocess.Popen(
-            ["sed", "-e", "$a\\\n"], stdin=r1.stdout, stdout=subprocess.PIPE,
-        )
-        r2 = subprocess.Popen(
-            ["head", "-n", f"{query.limit}"], stdin=rn.stdout, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-        )
-        r3 = subprocess.Popen(
-            ["tac"], stdin=r2.stdout, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
-        r4, _ = r3.communicate()
-        if r4 is None:
-            result = []
-        else:
-            result = list(
-                filter(
-                    None,
-                    r4.decode().split("\n"),
+        # Secure and optimized pure Python implementation
+        lines = []
+        current_line = 0
+        target_start = query.offset
+        target_end = query.offset + query.limit
+
+        async with aiofiles.open(path, mode='r') as f:
+            async for line in f:
+                if current_line >= target_start:
+                    if current_line < target_end:
+                        lines.append(line)
+                    # We continue to count total lines
+                current_line += 1
+
+        total = current_line
+
+        # Reverse the result (tac behavior)
+        lines.reverse()
+
+        for line in lines:
+            if not line.strip():
+                continue
+            try:
+                action_obj = json.loads(line)
+                records.append(
+                    core.Record(
+                        resource_type=core.ResourceType.history,
+                        shortname=query.filter_shortnames[0],
+                        subpath=query.subpath,
+                        attributes=action_obj,
+                    ),
                 )
-            )
-
-        r, _ = subprocess.Popen(
-            f"wc -l {path}".split(" "), stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        ).communicate()
-
-        if r is None:
-            total = 0
-        else:
-            total = int(
-                r.decode().split()[0],
-                10,
-            )
-
-        for line in result:
-            action_obj = json.loads(line)
-
-            records.append(
-                core.Record(
-                    resource_type=core.ResourceType.history,
-                    shortname=query.filter_shortnames[0],
-                    subpath=query.subpath,
-                    attributes=action_obj,
-                ),
-            )
+            except json.JSONDecodeError:
+                continue
 
     return total, records
 
@@ -820,6 +807,7 @@ async def serve_query_history(query, logged_in_user):
 async def serve_query_events(query, logged_in_user):
     records = []
     total = 0
+    from collections import deque
 
     trimmed_subpath = query.subpath
     if trimmed_subpath[0] == "/":
@@ -827,69 +815,39 @@ async def serve_query_events(query, logged_in_user):
 
     path = Path(
         f"{settings.spaces_folder}/{query.space_name}/.dm/events.jsonl")
+
     if path.is_file():
-        result = []
-        if query.search:
-            p = subprocess.Popen(
-                ["grep", f'"{query.search}"', path], stdout=subprocess.PIPE
-            )
-            p = subprocess.Popen(
-                ["tail", "-n", f"{query.limit + query.offset}"],
-                stdin=p.stdout,
-                stdout=subprocess.PIPE,
-            )
-            p = subprocess.Popen(
-                ["tac"], stdin=p.stdout, stdout=subprocess.PIPE
-            )
-            if query.offset > 0:
-                p = subprocess.Popen(
-                    ["sed", f"1,{query.offset}d"],
-                    stdin=p.stdout,
-                    stdout=subprocess.PIPE,
-                )
-            r, _ = p.communicate()
-            result = list(filter(None, r.decode("utf-8").split("\n")))
-        else:
-            r1 = subprocess.Popen(
-                ["tail", "-n", f"{query.limit + query.offset}", path], stdout=subprocess.PIPE,
-            )
+        # Buffer for last (limit + offset) matching lines
+        buffer_size = query.limit + query.offset
+        last_lines = deque(maxlen=buffer_size)
 
-            r1 = subprocess.Popen(
-                ["sed", "-e", "$a\\\n"], stdin=r1.stdout, stdout=subprocess.PIPE,
-            )
-            if query.offset > 0:
-                r1 = subprocess.Popen(
-                    ["head", "-n", f"{query.limit}"], stdin=r1.stdout, stdout=subprocess.PIPE,
-                )
+        async with aiofiles.open(path, mode='r') as f:
+            async for line in f:
+                # Count total lines of file (simulating wc -l behavior)
+                total += 1
 
-            r6, _ = subprocess.Popen(
-                ["tac"], stdin=r1.stdout, stdout=subprocess.PIPE,
-            ).communicate()
+                if query.search and query.search not in line:
+                    continue
 
-            if r6 is None:
-                result = []
-            else:
-                result = list(
-                    filter(
-                        None,
-                        r6.decode().split("\n"),
-                    )
-                )
+                last_lines.append(line)
 
-        r, _ = subprocess.Popen(
-            f"wc -l {path}".split(" "), stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        ).communicate()
+        # Now last_lines has the matches we want, in chronological order.
+        # We want reverse chronological.
+        result_lines = list(last_lines)
+        result_lines.reverse()
 
-        if r is None:
-            total = 0
-        else:
-            total = int(
-                r.decode().split()[0],
-                10,
-            )
+        # Apply offset (skip first 'offset' items from the reversed list - i.e. the newest ones)
+        if query.offset > 0:
+            result_lines = result_lines[query.offset:]
 
-        for line in result:
-            action_obj = json.loads(line)
+        # We already limited by deque size, so just take up to limit
+        result_lines = result_lines[:query.limit]
+
+        for line in result_lines:
+            try:
+                action_obj = json.loads(line)
+            except json.JSONDecodeError:
+                continue
 
             if (
                     query.from_date
@@ -901,7 +859,8 @@ async def serve_query_events(query, logged_in_user):
                     query.to_date
                     and str_to_datetime(action_obj["timestamp"]) > query.to_date
             ):
-                break
+                continue
+
             from utils.access_control import access_control
             if not await access_control.check_access(
                     user_shortname=logged_in_user,

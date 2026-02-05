@@ -1,0 +1,313 @@
+F401 [*] `datetime.datetime` imported but unused
+ --> alembic/scripts/calculate_checksums.py:5:22
+  |
+3 | import hashlib
+4 | import json
+5 | from datetime import datetime
+  |                      ^^^^^^^^
+6 | from sqlalchemy import select, update, func
+7 | from data_adapters.sql.adapter import SQLAdapter
+  |
+help: Remove unused import: `datetime.datetime`
+
+F401 [*] `sqlalchemy.update` imported but unused
+ --> alembic/scripts/calculate_checksums.py:6:32
+  |
+4 | import json
+5 | from datetime import datetime
+6 | from sqlalchemy import select, update, func
+  |                                ^^^^^^
+7 | from data_adapters.sql.adapter import SQLAdapter
+8 | from data_adapters.sql.create_tables import Histories, Users, Entries, Spaces, Roles, Permissions
+  |
+help: Remove unused import
+
+F401 [*] `sqlalchemy.func` imported but unused
+ --> alembic/scripts/calculate_checksums.py:6:40
+  |
+4 | import json
+5 | from datetime import datetime
+6 | from sqlalchemy import select, update, func
+  |                                        ^^^^
+7 | from data_adapters.sql.adapter import SQLAdapter
+8 | from data_adapters.sql.create_tables import Histories, Users, Entries, Spaces, Roles, Permissions
+  |
+help: Remove unused import
+
+F401 [*] `sqlalchemy` imported but unused
+  --> alembic/versions/0f3d2b1a7c21_add_authz_materialized_views.py:11:22
+   |
+10 | from alembic import op
+11 | import sqlalchemy as sa
+   |                      ^^
+12 |
+13 | # revision identifiers, used by Alembic.
+   |
+help: Remove unused import: `sqlalchemy`
+
+F401 [*] `sqlalchemy.dialects.postgresql` imported but unused
+  --> alembic/versions/1cf4e1ee3cb8_ext_permission_with_filter_fields_values.py:14:33
+   |
+12 | import sqlmodel
+13 | import sqlmodel.sql.sqltypes
+14 | from sqlalchemy.dialects import postgresql
+   |                                 ^^^^^^^^^^
+   |
+help: Remove unused import: `sqlalchemy.dialects.postgresql`
+
+F401 [*] `sqlalchemy` imported but unused
+  --> alembic/versions/6675fd9dfe42_remove_unique_from_sessions_table.py:11:22
+   |
+10 | from alembic import op
+11 | import sqlalchemy as sa
+   |                      ^^
+12 | import sqlmodel
+13 | import sqlmodel.sql.sqltypes
+   |
+help: Remove unused import: `sqlalchemy`
+
+F401 [*] `sqlmodel.sql.sqltypes` imported but unused
+  --> alembic/versions/6675fd9dfe42_remove_unique_from_sessions_table.py:13:8
+   |
+11 | import sqlalchemy as sa
+12 | import sqlmodel
+13 | import sqlmodel.sql.sqltypes
+   |        ^^^^^^^^^^^^^^^^^^^^^
+   |
+help: Remove unused import: `sqlmodel.sql.sqltypes`
+
+F401 [*] `sqlmodel.sql.sqltypes` imported but unused
+  --> alembic/versions/71bc1df82e6a_adding_user_last_login_at.py:13:8
+   |
+11 | import sqlalchemy as sa
+12 | import sqlmodel
+13 | import sqlmodel.sql.sqltypes
+   |        ^^^^^^^^^^^^^^^^^^^^^
+14 | from sqlalchemy.dialects import postgresql
+   |
+help: Remove unused import: `sqlmodel.sql.sqltypes`
+
+F401 [*] `sqlmodel.sql.sqltypes` imported but unused
+  --> alembic/versions/7520a89a8467_rm_activesession_table.py:13:8
+   |
+11 | import sqlalchemy as sa
+12 | import sqlmodel
+13 | import sqlmodel.sql.sqltypes
+   |        ^^^^^^^^^^^^^^^^^^^^^
+14 | from sqlalchemy.dialects import postgresql
+   |
+help: Remove unused import: `sqlmodel.sql.sqltypes`
+
+F401 [*] `sqlmodel.sql.sqltypes` imported but unused
+  --> alembic/versions/848b623755a4_make_created_nd_updated_at_required.py:13:8
+   |
+11 | import sqlalchemy as sa
+12 | import sqlmodel
+13 | import sqlmodel.sql.sqltypes
+   |        ^^^^^^^^^^^^^^^^^^^^^
+14 | from sqlalchemy.dialects import postgresql
+   |
+help: Remove unused import: `sqlmodel.sql.sqltypes`
+
+F401 [*] `sqlmodel.sql.sqltypes` imported but unused
+  --> alembic/versions/91c94250232a_adding_fk_on_owner_shortname.py:13:8
+   |
+11 | import sqlalchemy as sa
+12 | import sqlmodel
+13 | import sqlmodel.sql.sqltypes
+   |        ^^^^^^^^^^^^^^^^^^^^^
+   |
+help: Remove unused import: `sqlmodel.sql.sqltypes`
+
+F401 [*] `sqlalchemy` imported but unused
+  --> alembic/versions/9aae9138c4ef_indexing_created_at_updated_at.py:11:22
+   |
+10 | from alembic import op
+11 | import sqlalchemy as sa
+   |                      ^^
+12 | import sqlmodel
+13 | import sqlmodel.sql.sqltypes
+   |
+help: Remove unused import: `sqlalchemy`
+
+F401 [*] `sqlmodel.sql.sqltypes` imported but unused
+  --> alembic/versions/9aae9138c4ef_indexing_created_at_updated_at.py:13:8
+   |
+11 | import sqlalchemy as sa
+12 | import sqlmodel
+13 | import sqlmodel.sql.sqltypes
+   |        ^^^^^^^^^^^^^^^^^^^^^
+   |
+help: Remove unused import: `sqlmodel.sql.sqltypes`
+
+F401 [*] `sqlmodel.sql.sqltypes` imported but unused
+  --> alembic/versions/eb5f1ec65156_adding_user_locked_to_device.py:13:8
+   |
+11 | import sqlalchemy as sa
+12 | import sqlmodel
+13 | import sqlmodel.sql.sqltypes
+   |        ^^^^^^^^^^^^^^^^^^^^^
+   |
+help: Remove unused import: `sqlmodel.sql.sqltypes`
+
+F401 [*] `sqlmodel.sql.sqltypes` imported but unused
+  --> alembic/versions/f7a4949eed19_adding_query_policies_to_meta.py:13:8
+   |
+11 | import sqlalchemy as sa
+12 | import sqlmodel
+13 | import sqlmodel.sql.sqltypes
+   |        ^^^^^^^^^^^^^^^^^^^^^
+14 | from sqlalchemy.dialects import postgresql
+   |
+help: Remove unused import: `sqlmodel.sql.sqltypes`
+
+F401 [*] `subprocess` imported but unused
+  --> data_adapters/file/adapter.py:42:8
+   |
+40 | from fastapi import status
+41 | import json
+42 | import subprocess
+   |        ^^^^^^^^^^
+   |
+help: Remove unused import: `subprocess`
+
+F401 [*] `pytest` imported but unused
+ --> pytests/api_user_models_erros_test.py:1:8
+  |
+1 | import pytest
+  |        ^^^^^^
+2 | from models.api import Error
+3 | from utils.internal_error_code import InternalErrorCode
+  |
+help: Remove unused import: `pytest`
+
+F401 [*] `api.user.model.requests.OTPType` imported but unused
+ --> pytests/api_user_models_requests_test.py:5:5
+  |
+4 | from api.user.model.requests import (
+5 |     OTPType,
+  |     ^^^^^^^
+6 |     SendOTPRequest,
+7 |     PasswordResetRequest,
+  |
+help: Remove unused import
+
+F401 [*] `api.user.model.requests.Error` imported but unused
+  --> pytests/api_user_models_requests_test.py:11:5
+   |
+ 9 |     UserLoginRequest,
+10 |     Exception,
+11 |     Error,
+   |     ^^^^^
+12 |     InternalErrorCode
+13 | )
+   |
+help: Remove unused import
+
+F401 [*] `utils.regex` imported but unused
+  --> pytests/api_user_models_requests_test.py:14:23
+   |
+12 |     InternalErrorCode
+13 | )
+14 | import utils.regex as rgx
+   |                       ^^^
+   |
+help: Remove unused import: `utils.regex`
+
+F811 [*] Redefinition of unused `status` from line 3
+  --> pytests/feature/test_user.py:15:21
+   |
+13 | from models.api import Query
+14 | from models.enums import QueryType, ResourceType
+15 | from fastapi import status
+   |                     ^^^^^^ `status` redefined here
+16 | from utils.internal_error_code import InternalErrorCode
+   |
+  ::: pytests/feature/test_user.py:3:21
+   |
+ 1 | import pytest
+ 2 | from httpx import AsyncClient
+ 3 | from fastapi import status
+   |                     ------ previous definition of `status` here
+ 4 | from utils.internal_error_code import InternalErrorCode
+ 5 | from pytests.base_test import (
+   |
+help: Remove definition: `status`
+
+F811 [*] Redefinition of unused `InternalErrorCode` from line 4
+  --> pytests/feature/test_user.py:16:39
+   |
+14 | from models.enums import QueryType, ResourceType
+15 | from fastapi import status
+16 | from utils.internal_error_code import InternalErrorCode
+   |                                       ^^^^^^^^^^^^^^^^^ `InternalErrorCode` redefined here
+   |
+  ::: pytests/feature/test_user.py:4:39
+   |
+ 2 | from httpx import AsyncClient
+ 3 | from fastapi import status
+ 4 | from utils.internal_error_code import InternalErrorCode
+   |                                       ----------------- previous definition of `InternalErrorCode` here
+ 5 | from pytests.base_test import (
+ 6 |     assert_code_and_status_success,
+   |
+help: Remove definition: `InternalErrorCode`
+
+F401 [*] `utils.internal_error_code.InternalErrorCode` imported but unused
+ --> pytests/test_info.py:5:39
+  |
+3 | from fastapi import status
+4 | import pytest
+5 | from utils.internal_error_code import InternalErrorCode
+  |                                       ^^^^^^^^^^^^^^^^^
+6 | from utils.jwt import sign_jwt
+7 | from utils.settings import settings
+  |
+help: Remove unused import: `utils.internal_error_code.InternalErrorCode`
+
+F401 [*] `utils.jwt.sign_jwt` imported but unused
+ --> pytests/test_info.py:6:23
+  |
+4 | import pytest
+5 | from utils.internal_error_code import InternalErrorCode
+6 | from utils.jwt import sign_jwt
+  |                       ^^^^^^^^
+7 | from utils.settings import settings
+  |
+help: Remove unused import: `utils.jwt.sign_jwt`
+
+F401 [*] `utils.settings.settings` imported but unused
+ --> pytests/test_info.py:7:28
+  |
+5 | from utils.internal_error_code import InternalErrorCode
+6 | from utils.jwt import sign_jwt
+7 | from utils.settings import settings
+  |                            ^^^^^^^^
+  |
+help: Remove unused import: `utils.settings.settings`
+
+F401 [*] `os` imported but unused
+ --> setup_tests.py:2:8
+  |
+1 | import json
+2 | import os
+  |        ^^
+3 | from pathlib import Path
+4 | from utils.password_hashing import hash_password
+  |
+help: Remove unused import: `os`
+
+F541 [*] f-string without any placeholders
+  --> setup_tests.py:16:7
+   |
+14 | # Hash password
+15 | hashed_pw = hash_password(PASSWORD)
+16 | print(f"Hashed password generated.")
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+17 |
+18 | # Update user files
+   |
+help: Remove extraneous `f` prefix
+
+Found 27 errors.
+[*] 27 fixable with the `--fix` option.

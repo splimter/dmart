@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+import shutil
 import sys
 import time
 import hashlib
@@ -3218,7 +3219,7 @@ class SQLAdapter(BaseDataAdapter):
             record=record, owner_shortname=owner_shortname
         )
         await self.delete(space_name, record.subpath, resource_obj, owner_shortname)
-        os.system(f"rm -r {settings.spaces_folder}/{space_name}")
+        shutil.rmtree(settings.spaces_folder / space_name, ignore_errors=True)
 
     async def get_last_updated_entry(
             self,

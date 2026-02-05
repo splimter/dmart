@@ -1,11 +1,12 @@
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 from pathlib import Path
 
 
 def generate_email_from_template(template, data):
     templates_dir = Path(__file__).resolve().parent / "templates"
     environment = Environment(
-        loader=FileSystemLoader(str(templates_dir))
+        loader=FileSystemLoader(str(templates_dir)),
+        autoescape=select_autoescape(['html', 'xml'])
     )
     match template:
         case "activation":

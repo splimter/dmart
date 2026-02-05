@@ -105,6 +105,12 @@ class AccessControl:
             subpath_parts.append(entry_shortname)
 
         search_subpath = ""
+
+        # Optimization: Flatten attributes once if needed for restriction checks
+        flattened_attributes = None
+        if action_type in [ActionType.create, ActionType.update] and record_attributes:
+            flattened_attributes = flatten_dict(record_attributes)
+
         for subpath_part in subpath_parts:
             search_subpath += subpath_part
             # Check if the user has global access
@@ -115,7 +121,8 @@ class AccessControl:
                 action_type,
                 resource_type,
                 resource_achieved_conditions,
-                record_attributes
+                record_attributes,
+                flattened_attributes
             )
             if global_access:
                 return True
@@ -133,7 +140,8 @@ class AccessControl:
                     user_permissions[permission_key]["restricted_fields"],
                     user_permissions[permission_key]["allowed_fields_values"],
                     action_type,
-                    record_attributes
+                    record_attributes,
+                    flattened_attributes
                 )
             ):
                 return True
@@ -190,7 +198,8 @@ class AccessControl:
             action_type: ActionType,
             resource_type: str,
             resource_achieved_conditions: set,
-            record_attributes: dict
+            record_attributes: dict,
+            flattened_attributes: dict | None = None
     ) -> bool:
         """
         check if has access to global subpath by replacing the following
@@ -237,7 +246,8 @@ class AccessControl:
             user_permissions[permission_key]["restricted_fields"],
             user_permissions[permission_key]["allowed_fields_values"],
             action_type,
-            record_attributes
+            record_attributes,
+            flattened_attributes
         )
         ):
             return True
@@ -262,7 +272,8 @@ class AccessControl:
             restricted_fields: list,
             allowed_fields_values: dict,
             action_type: ActionType,
-            record_attributes: dict
+            record_attributes: dict,
+            flattened_attributes: dict | None = None
     ):
         """
         in case of create or update action, check access for the record fields
@@ -271,7 +282,8 @@ class AccessControl:
         if action_type not in [ActionType.create, ActionType.update]:
             return True
 
-        flattened_attributes = flatten_dict(record_attributes)
+        if flattened_attributes is None:
+            flattened_attributes = flatten_dict(record_attributes)
 
         for restricted_field in restricted_fields:
             if restricted_field in flattened_attributes:
