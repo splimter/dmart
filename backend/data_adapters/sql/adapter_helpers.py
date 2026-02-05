@@ -97,11 +97,19 @@ def subpath_checker(subpath: str):
 
 def transform_keys_to_sql(path):
     parts = path.split('.')
+    if len(parts) == 1:
+        return f"{parts[0]}::text" # Fallback if just one part, though typically payload.x
+
+    # parts[0] is typically 'payload' or a column name
     sql_path = parts[0]
-    if len(parts[1:-1]) != 0:
-        sql_path += ' -> ' + ' -> '.join([f"'{part}'" for part in parts[1:-1]])
+
+    # Iterate through middle parts
+    for part in parts[1:-1]:
+        sql_path += f" -> '{part}'"
+
+    # Final part as text extraction
     sql_path += f" ->> '{parts[-1]}'"
-    sql_path.replace("->  ->>", "->>")
+
     return sql_path
 
 

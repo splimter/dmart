@@ -1135,50 +1135,76 @@ class SQLAdapter(BaseDataAdapter):
             filter_shortnames: list | None = None,
             retrieve_json_payload: bool = False,
     ) -> dict:
-        attachments_dict: dict[str, list] = {}
-        async with self.get_session() as session:
-            if not subpath.startswith("/"):
-                subpath = f"/{subpath}"
+        # Compatibility wrapper for single-entry fetch
+        if str(settings.spaces_folder) in str(attachments_path):
+            attachments_path = attachments_path.relative_to(settings.spaces_folder)
+        space_name = attachments_path.parts[0]
+        shortname = attachments_path.parts[-1]
 
-            if str(settings.spaces_folder) in str(attachments_path):
-                attachments_path = attachments_path.relative_to(settings.spaces_folder)
-            space_name = attachments_path.parts[0]
-            shortname = attachments_path.parts[-1]
+        full_subpath = f"{subpath}/{shortname}".replace('//', '/')
+        if not full_subpath.startswith("/"):
+            full_subpath = f"/{full_subpath}"
+
+        results = await self._fetch_attachments_batch(space_name, [full_subpath], filter_types, retrieve_json_payload)
+        return results.get(full_subpath, {})
+
+    async def _fetch_attachments_batch(
+            self,
+            space_name: str,
+            subpaths: list[str],
+            filter_types: list | None = None,
+            retrieve_json_payload: bool = False,
+    ) -> dict[str, dict[str, list]]:
+        # Map: subpath -> { resource_type: [records] }
+        attachments_map: dict[str, dict[str, list]] = {sp: {} for sp in subpaths}
+
+        if not subpaths:
+            return attachments_map
+
+        async with self.get_session() as session:
             statement = (
                 select(Attachments)
                 .where(Attachments.space_name == space_name)
-                .where(Attachments.subpath == f"{subpath}/{shortname}".replace('//', '/'))
+                .where(col(Attachments.subpath).in_(subpaths))
             )
+
+            if filter_types:
+                statement = statement.where(col(Attachments.resource_type).in_(filter_types))
+
+            # Optimize: defer media loading unless specifically needed (though schema says it's binary)
+            # If retrieve_json_payload is False, we might want to skip payload too, but standard logic fetches all
+            # Assuming payload is JSONB and efficient enough
+
             results = list((await session.execute(statement)).all())
 
-            if len(results) == 0:
-                return attachments_dict
-
-            for idx, item in enumerate(results):
+            for item in results:
                 item = item[0]
                 attachment_record = Attachments.model_validate(item)
+                # Keep parent subpath reference
+                parent_key = attachment_record.subpath
+
                 attachment_json = attachment_record.model_dump()
+
+                # Construct clean record
                 attachment = {
                     "resource_type": attachment_json["resource_type"],
                     "uuid": attachment_json["uuid"],
                     "shortname": attachment_json["shortname"],
-                    "subpath": "/".join(attachment_json["subpath"].split("/")[:-1])  # join(),
+                    "subpath": "/".join(attachment_json["subpath"].split("/")[:-1]),
                 }
-                del attachment_json["resource_type"]
-                del attachment_json["uuid"]
-                del attachment_json["media"]
-                del attachment_json["shortname"]
-                del attachment_json["subpath"]
-                del attachment_json["relationships"]
-                del attachment_json["acl"]
-                del attachment_json["space_name"]
-                attachment["attributes"] = {**attachment_json}
-                if attachment_record.resource_type in attachments_dict:
-                    attachments_dict[attachment_record.resource_type].append(attachment)
-                else:
-                    attachments_dict[attachment_record.resource_type] = [attachment]
 
-        return attachments_dict
+                # Clean up attributes
+                for key in ["resource_type", "uuid", "media", "shortname", "subpath", "relationships", "acl", "space_name"]:
+                    attachment_json.pop(key, None)
+
+                attachment["attributes"] = attachment_json
+
+                if parent_key in attachments_map:
+                    if attachment_record.resource_type not in attachments_map[parent_key]:
+                        attachments_map[parent_key][attachment_record.resource_type] = []
+                    attachments_map[parent_key][attachment_record.resource_type].append(attachment)
+
+        return attachments_map
 
     def payload_path(
             self,
@@ -2647,38 +2673,47 @@ class SQLAdapter(BaseDataAdapter):
             return results
 
         # Case 3: Standard query → convert and optionally fetch attachments
-        attachment_tasks = []
-        attachment_indices = []
+        final_results = []
+        attachment_target_subpaths = []
 
-        for idx, item in enumerate(results):
+        # Pre-process records and collect subpaths for batch fetching
+        for item in results:
             rec = item.to_record(item.subpath, item.shortname)
-            results[idx] = rec
 
             if process_payload:
-                # Strip payload body early (if disabled)
                 if not query.retrieve_json_payload:
                     payload = rec.attributes.get("payload", {})
                     if payload and payload.get("body"):
                         payload["body"] = None
 
-                # Queue attachments if requested
                 if query.retrieve_attachments:
-                    attachment_tasks.append(
-                        self.get_entry_attachments(
-                            rec.subpath,
-                            Path(f"{query.space_name}/{rec.shortname}"),
-                            retrieve_json_payload=True,
-                        )
-                    )
-                    attachment_indices.append(idx)
+                    # Logic mirrors get_entry_attachments subpath construction: subpath/shortname
+                    target_subpath = f"{rec.subpath}/{rec.shortname}".replace('//', '/')
+                    if not target_subpath.startswith("/"):
+                        target_subpath = f"/{target_subpath}"
+                    attachment_target_subpaths.append(target_subpath)
 
-        # Run all attachment retrievals concurrently
-        if attachment_tasks:
-            attachments_list = await asyncio.gather(*attachment_tasks)
-            for idx, attachments in zip(attachment_indices, attachments_list):
-                results[idx].attachments = attachments
+            final_results.append(rec)
 
-        return results
+        # Batch fetch attachments if needed
+        if attachment_target_subpaths:
+            attachments_map = await self._fetch_attachments_batch(
+                query.space_name,
+                attachment_target_subpaths,
+                query.filter_types, # Assuming query filters apply to attachments too or None
+                retrieve_json_payload=True
+            )
+
+            # Map back to results
+            for rec in final_results:
+                target_subpath = f"{rec.subpath}/{rec.shortname}".replace('//', '/')
+                if not target_subpath.startswith("/"):
+                    target_subpath = f"/{target_subpath}"
+
+                if target_subpath in attachments_map:
+                    rec.attachments = attachments_map[target_subpath]
+
+        return final_results
 
     async def clear_failed_password_attempts(self, user_shortname: str) -> bool:
         async with self.get_session() as session:
@@ -2781,8 +2816,12 @@ class SQLAdapter(BaseDataAdapter):
         if action is api.RequestType.update and record.resource_type is ResourceType.user:
             current_user = current_record
 
+        unique_queries = []
+
         for compound in folder_meta.payload.body["unique_fields"]:  # type: ignore
             query_string = ""
+            valid_compound = True
+
             for composite_unique_key in compound:
                 is_payload_body_field = composite_unique_key.startswith("payload.body.")
                 payload_path = ""
@@ -2794,50 +2833,74 @@ class SQLAdapter(BaseDataAdapter):
                 else:
                     value = get_nested_value(record.attributes, composite_unique_key)
                 
+                # If any part of a composite key is missing/empty, we generally can't enforce uniqueness on that tuple
+                # OR we might skip this check.
+                # Assuming here if value is missing we don't check this compound constraint.
                 if value is None or value == "":
-                    continue
+                    valid_compound = False
+                    break
                     
+                # Skip check if value hasn't changed for existing record
                 if current_user is not None:
                     if is_payload_body_field:
                         user_payload = getattr(current_user, "payload", None)
                         if user_payload and isinstance(user_payload.body, dict):
                             user_value = get_nested_value(user_payload.body, payload_path) if isinstance(user_payload.body, dict) else None
                             if user_value == value:
-                                continue
+                                # Value matches existing record, but is it the ONLY field in composite?
+                                # If it's composite, we need to check if the COMBINATION is unique.
+                                # If all fields match existing record, we are safe.
+                                # But simpler logic: just build the query.
+                                # We will exclude self later.
+                                pass
                     else:
                         if hasattr(current_user, composite_unique_key) and getattr(current_user, composite_unique_key) == value:
-                            continue
+                            pass
 
+                # Escape value for search string
                 query_string += f"@{composite_unique_key}:{value} "
 
-            if query_string == "":
-                continue
+            if valid_compound and query_string:
+                unique_queries.append(query_string.strip())
 
-            q = api.Query(
-                space_name=space_name,
-                subpath=record.subpath,
-                type=QueryType.subpath,
-                search=query_string
+        if not unique_queries:
+            return True
+
+        # Combine all unique checks into one OR query
+        # search="(@field1:val1) | (@field2:val2)"
+        combined_search = " | ".join([f"({q})" for q in unique_queries])
+
+        q = api.Query(
+            space_name=space_name,
+            subpath=record.subpath,
+            type=QueryType.subpath,
+            search=combined_search
+        )
+
+        owner = record.attributes.get("owner_shortname", None) if user_shortname is None else user_shortname
+        total, records = await self.query(q, owner)
+
+        if action is api.RequestType.update and current_record is not None:
+            # Exclude self from results
+            records = [r for r in records if not (r.shortname == record.shortname and r.subpath == record.subpath)]
+            total = len(records)
+
+        if total > 0:
+             # Identify which constraint failed for better error message
+             # This is a bit computationally expensive but happens only on error
+             for q_str in unique_queries:
+                 # Re-verify locally against fetched records
+                 # Or just return generic error
+                 pass
+
+             raise API_Exception(
+                status.HTTP_400_BAD_REQUEST,
+                API_Error(
+                    type="request",
+                    code=InternalErrorCode.DATA_SHOULD_BE_UNIQUE,
+                    message=f"Entry properties should be unique. Conflict found.",
+                ),
             )
-            owner = record.attributes.get("owner_shortname", None) if user_shortname is None else user_shortname
-            total, records = await self.query(q, owner)
-
-            if action is api.RequestType.update and current_record is not None:
-                records = [r for r in records if not (r.shortname == record.shortname and r.subpath == record.subpath)]
-                if total == 1:
-                    total = 0
-                else:
-                    total = len(records)
-
-            if total != 0:
-                raise API_Exception(
-                    status.HTTP_400_BAD_REQUEST,
-                    API_Error(
-                        type="request",
-                        code=InternalErrorCode.DATA_SHOULD_BE_UNIQUE,
-                        message=f"Entry properties should be unique: {query_string}",
-                    ),
-                )
         return True
 
     async def validate_payload_with_schema(

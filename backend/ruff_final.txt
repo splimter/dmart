@@ -171,6 +171,18 @@ F401 [*] `subprocess` imported but unused
    |
 help: Remove unused import: `subprocess`
 
+F541 [*] f-string without any placeholders
+    --> data_adapters/sql/adapter.py:2901:29
+     |
+2899 |                     type="request",
+2900 |                     code=InternalErrorCode.DATA_SHOULD_BE_UNIQUE,
+2901 |                     message=f"Entry properties should be unique. Conflict found.",
+     |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2902 |                 ),
+2903 |             )
+     |
+help: Remove extraneous `f` prefix
+
 F401 [*] `pytest` imported but unused
  --> pytests/api_user_models_erros_test.py:1:8
   |
@@ -309,5 +321,5 @@ F541 [*] f-string without any placeholders
    |
 help: Remove extraneous `f` prefix
 
-Found 27 errors.
-[*] 27 fixable with the `--fix` option.
+Found 28 errors.
+[*] 28 fixable with the `--fix` option.
