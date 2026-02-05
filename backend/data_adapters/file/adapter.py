@@ -578,10 +578,10 @@ class FileAdapter(BaseDataAdapter):
                 os.makedirs(path)
 
             meta_json = meta.model_dump_json(exclude_none=True, warnings="error")
-            with open(path / filename, "w") as file:
-                file.write(meta_json)
-                file.flush()
-                os.fsync(file)
+            async with aiofiles.open(path / filename, "w") as file:
+                await file.write(meta_json)
+                await file.flush()
+                os.fsync(file.file.fileno())
             return meta_json
         except Exception as e:
             raise API_Exception(
@@ -608,10 +608,10 @@ class FileAdapter(BaseDataAdapter):
         if not path.is_dir():
             os.makedirs(path)
 
-        with open(path / filename, "w") as file:
-            file.write(meta.model_dump_json(exclude_none=True, warnings="error"))
-            file.flush()
-            os.fsync(file)
+        async with aiofiles.open(path / filename, "w") as file:
+            await file.write(meta.model_dump_json(exclude_none=True, warnings="error"))
+            await file.flush()
+            os.fsync(file.file.fileno())
 
     async def save_payload(self, space_name: str, subpath: str, meta: core.Meta, attachment):
         path, filename = self.metapath(
@@ -629,10 +629,10 @@ class FileAdapter(BaseDataAdapter):
             )
 
         content = await attachment.read()
-        with open(payload_file_path / payload_filename, "wb") as file:
-            file.write(content)
-            file.flush()
-            os.fsync(file)
+        async with aiofiles.open(payload_file_path / payload_filename, "wb") as file:
+            await file.write(content)
+            await file.flush()
+            os.fsync(file.file.fileno())
 
     async def save_payload_from_json(
             self,
@@ -667,15 +667,15 @@ class FileAdapter(BaseDataAdapter):
 
         payload_json = json.dumps(payload_data)
         if issubclass(meta.__class__, core.Log) and (payload_file_path / payload_filename).is_file():
-            with open(payload_file_path / payload_filename, "a") as file:
-                file.write(f"\n{payload_json}")
-                file.flush()
-                os.fsync(file)
+            async with aiofiles.open(payload_file_path / payload_filename, "a") as file:
+                await file.write(f"\n{payload_json}")
+                await file.flush()
+                os.fsync(file.file.fileno())
         else:
-            with open(payload_file_path / payload_filename, "w") as file:
-                file.write(payload_json)
-                file.flush()
-                os.fsync(file)
+            async with aiofiles.open(payload_file_path / payload_filename, "w") as file:
+                await file.write(payload_json)
+                await file.flush()
+                os.fsync(file.file.fileno())
 
     async def update(
             self,
@@ -734,10 +734,10 @@ class FileAdapter(BaseDataAdapter):
 
         meta.updated_at = datetime.now()
         meta_json = meta.model_dump_json(exclude_none=True, warnings="error")
-        with open(path / filename, "w") as file:
-            file.write(meta_json)
-            file.flush()
-            os.fsync(file)
+        async with aiofiles.open(path / filename, "w") as file:
+            await file.write(meta_json)
+            await file.flush()
+            os.fsync(file.file.fileno())
 
         if issubclass(meta.__class__, core.Log):
             return {}

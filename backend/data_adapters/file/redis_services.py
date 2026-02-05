@@ -950,15 +950,32 @@ class RedisServices(Redis):
 
         return query_string or "*"
 
-    async def get_doc_by_id(self, doc_id: str) -> Any:
+    _cache: dict[str, tuple[float, Any]] = {}
+    _cache_ttl = 60  # Cache duration in seconds
+
+    async def get_doc_by_id(self, doc_id: str, cache: bool = False) -> Any:
+        if cache:
+            now = datetime.now().timestamp()
+            if doc_id in self._cache:
+                timestamp, data = self._cache[doc_id]
+                if now - timestamp < self._cache_ttl:
+                    return data
+                else:
+                    del self._cache[doc_id]
+
         try:
             x = self.json().get(name=doc_id)
             if x and isinstance(x, Awaitable):
                 value = await x
                 if isinstance(value, dict):
+                    if cache:
+                        self._cache[doc_id] = (datetime.now().timestamp(), value)
                     return value
                 if isinstance(value, str):
-                    return json.loads(value)
+                    data = json.loads(value)
+                    if cache:
+                        self._cache[doc_id] = (datetime.now().timestamp(), data)
+                    return data
                 else:
                    raise Exception(f"Not json dict at id: {doc_id}. data: {value=}")
             else:

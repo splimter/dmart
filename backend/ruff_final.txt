@@ -195,6 +195,60 @@ F401 [*] `urllib.parse.urlparse` imported but unused
    |
 help: Remove unused import: `urllib.parse.urlparse`
 
+E402 Module level import not at top of file
+   --> main.py:457:1
+    |
+456 | # Lazy loading of routers to improve startup time
+457 | from api.user.router import router as user
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+458 | app.include_router(
+459 |     user, prefix="/user", tags=["user"], dependencies=[Depends(capture_body)]
+    |
+
+E402 Module level import not at top of file
+   --> main.py:462:1
+    |
+460 | )
+461 |
+462 | from api.managed.router import router as managed
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+463 | app.include_router(
+464 |     managed, prefix="/managed", tags=["managed"], dependencies=[Depends(capture_body)]
+    |
+
+E402 Module level import not at top of file
+   --> main.py:467:1
+    |
+465 | )
+466 |
+467 | from api.qr.router import router as qr
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+468 | app.include_router(
+469 |     qr,
+    |
+
+E402 Module level import not at top of file
+   --> main.py:475:1
+    |
+473 | )
+474 |
+475 | from api.public.router import router as public
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+476 | app.include_router(
+477 |     public, prefix="/public", tags=["public"], dependencies=[Depends(capture_body)]
+    |
+
+E402 Module level import not at top of file
+   --> main.py:480:1
+    |
+478 | )
+479 |
+480 | from api.info.router import router as info
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+481 | app.include_router(
+482 |     info, prefix="/info", tags=["info"], dependencies=[Depends(capture_body)]
+    |
+
 F401 [*] `pytest` imported but unused
  --> pytests/api_user_models_erros_test.py:1:8
   |
@@ -333,5 +387,5 @@ F541 [*] f-string without any placeholders
    |
 help: Remove extraneous `f` prefix
 
-Found 29 errors.
+Found 34 errors.
 [*] 29 fixable with the `--fix` option.

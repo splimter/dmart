@@ -47,7 +47,12 @@ def deep_update(mapping: Dict[KeyType, Any], *updating_mappings: Dict[KeyType, A
 
 
 class Resource(BaseModel):
-    model_config = ConfigDict(use_enum_values=True, arbitrary_types_allowed=True)
+    model_config = ConfigDict(
+        use_enum_values=True,
+        arbitrary_types_allowed=True,
+        str_strip_whitespace=True,
+        validate_assignment=True
+    )
 
 
 class Payload(Resource):
