@@ -183,6 +183,18 @@ F541 [*] f-string without any placeholders
      |
 help: Remove extraneous `f` prefix
 
+F401 [*] `urllib.parse.urlparse` imported but unused
+  --> main.py:15:26
+   |
+13 | from datetime import datetime
+14 | from typing import Any, cast
+15 | from urllib.parse import urlparse, quote
+   |                          ^^^^^^^^
+16 | from jsonschema.exceptions import ValidationError as SchemaValidationError
+17 | from pydantic import ValidationError
+   |
+help: Remove unused import: `urllib.parse.urlparse`
+
 F401 [*] `pytest` imported but unused
  --> pytests/api_user_models_erros_test.py:1:8
   |
@@ -321,5 +333,5 @@ F541 [*] f-string without any placeholders
    |
 help: Remove extraneous `f` prefix
 
-Found 28 errors.
-[*] 28 fixable with the `--fix` option.
+Found 29 errors.
+[*] 29 fixable with the `--fix` option.

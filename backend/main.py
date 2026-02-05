@@ -20,6 +20,8 @@ from utils.middleware import CustomRequestMiddleware, ChannelMiddleware
 from utils.jwt import JWTBearer
 from utils.plugin_manager import plugin_manager
 from fastapi import Depends, FastAPI, Request, Response, status
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from utils.logger import logging_schema
 from fastapi.logger import logger
 from fastapi.encoders import jsonable_encoder
@@ -161,6 +163,16 @@ async def validation_exception_handler(_: Request, exc: RequestValidationError):
     )
 
 
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origin_regex=".*",
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["x-server-time"],
+    max_age=600,
+)
 app.add_middleware(CustomRequestMiddleware)
 app.add_middleware(ChannelMiddleware)
 
@@ -201,33 +213,10 @@ def set_middleware_extra(request, response, start_time, user_shortname, exceptio
 
 
 def set_middleware_response_headers(request, response):
-    referer = request.headers.get(
-        "referer",
-        request.headers.get("origin",
-                            request.headers.get("x-forwarded-proto", "http")
-                            + "://"
-                            + request.headers.get(
-                                "x-forwarded-host", f"{settings.listening_host}:{settings.listening_port}"
-                            )),
-    )
-    origin = urlparse(referer)
-    response.headers[
-        "Access-Control-Allow-Origin"
-    ] = f"{origin.scheme}://{origin.netloc}"
-
-
-    response.headers["Access-Control-Allow-Credentials"] = "true"
-    response.headers["Access-Control-Allow-Headers"] = "content-type, charset, authorization, accept-language, content-length"
-    response.headers["Access-Control-Max-Age"] = "600"
-    response.headers[
-        "Access-Control-Allow-Methods"
-    ] = "OPTIONS, DELETE, POST, GET, PATCH, PUT"
-
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
     response.headers["x-server-time"] = datetime.now().isoformat()
-    response.headers["Access-Control-Expose-Headers"] = "x-server-time"
     return response
 
 
