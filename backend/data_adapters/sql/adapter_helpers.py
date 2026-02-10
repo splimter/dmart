@@ -95,6 +95,8 @@ def subpath_checker(subpath: str):
 
 
 def transform_keys_to_sql(path):
+    if not re.match(r'^[a-zA-Z0-9_.]+$', path):
+        raise ValueError(f"Invalid characters in path: {path}")
     parts = path.split('.')
     sql_path = parts[0]
     if len(parts[1:-1]) != 0:

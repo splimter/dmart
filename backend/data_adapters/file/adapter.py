@@ -2114,3 +2114,11 @@ class FileAdapter(BaseDataAdapter):
                 if identifier == "email":
                     return bool(user.get("is_email_verified", True))
             return False
+
+    async def set_temp_lockout(self, user_shortname: str, duration: int) -> bool:
+        async with RedisServices() as redis_services:
+            return bool(await redis_services.set_key(f"users:temp_lockout/{user_shortname}", "locked", ex=duration))
+
+    async def check_temp_lockout(self, user_shortname: str) -> bool:
+        async with RedisServices() as redis_services:
+            return bool(await redis_services.get_key(f"users:temp_lockout/{user_shortname}"))

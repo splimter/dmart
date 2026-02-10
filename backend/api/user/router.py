@@ -54,6 +54,7 @@ router = APIRouter(default_response_class=ORJSONResponse)
 
 MANAGEMENT_SPACE: str = settings.management_space
 USERS_SUBPATH: str = "users"
+DUMMY_HASH = password_hashing.hash_password("dummy")
 
 
 @router.get(
@@ -451,6 +452,10 @@ async def login(response: Response, request: UserLoginRequest, http_request: Req
                 key, value = _list[0]
                 shortname = await get_shortname_from_identifier(key, value)
                 if shortname is None:
+                    # Mitigate timing attack
+                    if DUMMY_HASH:
+                        password_hashing.verify_password(request.password or "dummy", DUMMY_HASH)
+
                     raise api.Exception(
                         status.HTTP_401_UNAUTHORIZED,
                         api.Error(
@@ -466,6 +471,13 @@ async def login(response: Response, request: UserLoginRequest, http_request: Req
                 class_type=core.User,
                 user_shortname=shortname,
             )
+
+            if await db.check_temp_lockout(shortname):
+                 raise api.Exception(
+                    status.HTTP_401_UNAUTHORIZED,
+                    api.Error(type="auth", code=InternalErrorCode.USER_ACCOUNT_LOCKED,
+                              message="Account is temporarily locked. Please try again later."),
+                )
 
         is_password_valid = password_hashing.verify_password(
             request.password or "", user.password or ""
@@ -524,7 +536,14 @@ async def login(response: Response, request: UserLoginRequest, http_request: Req
                 message="Invalid username or password"
             ),
         )
-    except api.Exception as _:
+    except api.Exception as e:
+        if e.error.code == InternalErrorCode.USER_ACCOUNT_LOCKED:
+            raise e
+
+        # Mitigate timing attack
+        if DUMMY_HASH:
+             password_hashing.verify_password(request.password or "dummy", DUMMY_HASH)
+
         raise api.Exception(
             status.HTTP_401_UNAUTHORIZED,
             api.Error(
@@ -1283,11 +1302,24 @@ async def handle_failed_login_attempt(user: core.User):
     failed_login_attempts_count += 1
 
     if failed_login_attempts_count >= settings.max_failed_login_attempts:
-        # If the user reach the configured limit, lock the user by setting the is_active to false
+        # If the user reach the configured limit, lock the user
         if user.is_active:
             await db.set_failed_password_attempt_count(user.shortname, failed_login_attempts_count)
+            logger.info(f"User {user.shortname} reached the maximum failed login attempts ({settings.max_failed_login_attempts})")
 
-            logger.info(f"User {user.shortname} reached the maximum failed login attempts ({settings.max_failed_login_attempts}) disabling the user")
+            # Try temp lockout first (15 minutes)
+            if await db.set_temp_lockout(user.shortname, 15 * 60):
+                 # Clear session on lock
+                 await db.remove_user_session(user.shortname)
+
+                 raise api.Exception(
+                    status.HTTP_401_UNAUTHORIZED,
+                    api.Error(type="auth", code=InternalErrorCode.USER_ACCOUNT_LOCKED,
+                              message="Account temporarily locked due to too many failed login attempts."),
+                )
+
+            # Fallback to permanent disable if temp lockout not supported/failed
+            logger.info(f"Disabling user {user.shortname} permanently")
 
             old_version_flattend = flatten_dict(user.model_dump())
             user.is_active = False

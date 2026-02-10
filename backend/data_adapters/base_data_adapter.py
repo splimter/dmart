@@ -465,3 +465,11 @@ class BaseDataAdapter(ABC):
     @abstractmethod
     async def test_connection(self):
         pass
+
+    @abstractmethod
+    async def set_temp_lockout(self, user_shortname: str, duration: int) -> bool:
+        pass
+
+    @abstractmethod
+    async def check_temp_lockout(self, user_shortname: str) -> bool:
+        pass
