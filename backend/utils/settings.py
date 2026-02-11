@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     websocket_url: str = "" #"http://127.0.0.1:8484"
     websocket_port: int = 8484
     base_path: str = ""
-    debug_enabled: bool = True
+    debug_enabled: bool = False
     debug_perm: bool = False
     log_handlers: list[str] = ['file']
     log_file: str = "../logs/dmart.ljson.log"
@@ -50,6 +50,7 @@ class Settings(BaseSettings):
     jwt_access_expires: int = 30 * 86400  # 30 days
     listening_host: str = "0.0.0.0"
     listening_port: int = 8282
+    cors_origins: list[str] = ["http://localhost:5173", "http://localhost:4173", "http://localhost:3000", "http://127.0.0.1:5173", "http://127.0.0.1:4173", "http://127.0.0.1:3000"]
     redis_host: str = "127.0.0.1"
     redis_password: str = ""
     redis_port: int = 6379
@@ -162,6 +163,7 @@ class Settings(BaseSettings):
                 logger.error(f"Failed to open the channel config file at {channels_config_file}. Error: {e}")
         
         self.load_cxb_config()
+        self.check_jwt_secret()
 
     def load_cxb_config(self) -> None:
         backend_dir = Path(__file__).resolve().parent.parent
@@ -200,6 +202,29 @@ class Settings(BaseSettings):
                         self.cxb_url = url
             except Exception as e:
                 logger.error(f"Failed to read CXB config at {config_path}. Error: {e}")
+
+    def check_jwt_secret(self) -> None:
+        # Check if jwt_secret was loaded from environment or config file
+        # This is tricky because pydantic handles it.
+        # A simple check is to warn if we are using the default generated one if we could detect it.
+        # But since we initialize it with a random value in class definition, we can't easily detect if it was overridden unless we check os.environ directly or config file.
+        # However, checking if it is consistently set is what matters.
+        env_secret = os.getenv("JWT_SECRET")
+        if not env_secret and not self.debug_enabled:
+             # In production (debug_enabled=False), warn if JWT_SECRET is not explicitly set in environment
+             # Note: It could be in config.env too.
+             # Let's check if it's in config.env
+             in_config_file = False
+             env_file = get_env_file()
+             if os.path.exists(env_file):
+                 with open(env_file, 'r') as f:
+                     if "JWT_SECRET" in f.read():
+                         in_config_file = True
+
+             if not in_config_file:
+                 # It might be auto-generated
+                 print("WARNING: JWT_SECRET is not set in environment or config file. A random secret is being used, which will invalidate sessions on restart.")
+                 logger.warning("JWT_SECRET is not set. Using a random secret.")
 
     raw_allowed_submit_models: str = Field(default="",alias="allowed_submit_models")
 

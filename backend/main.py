@@ -60,7 +60,6 @@ class SPAStaticFiles(StaticFiles):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting up")
-    print('{"stage":"starting up"}')
 
     openapi_schema = app.openapi()
     paths = openapi_schema["paths"]
@@ -78,7 +77,6 @@ async def lifespan(app: FastAPI):
 
 
     logger.info("Application shutting down")
-    print('{"stage":"shutting down"}')
 
 
 app = FastAPI(
@@ -211,12 +209,17 @@ def set_middleware_response_headers(request, response):
                             )),
     )
     origin = urlparse(referer)
-    response.headers[
-        "Access-Control-Allow-Origin"
-    ] = f"{origin.scheme}://{origin.netloc}"
+    origin_url = f"{origin.scheme}://{origin.netloc}"
 
+    if settings.cors_origins:
+        if origin_url in settings.cors_origins:
+            response.headers["Access-Control-Allow-Origin"] = origin_url
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+    else:
+        # Fallback to allow current origin if no cors_origins specified (legacy behavior)
+        response.headers["Access-Control-Allow-Origin"] = origin_url
+        response.headers["Access-Control-Allow-Credentials"] = "true"
 
-    response.headers["Access-Control-Allow-Credentials"] = "true"
     response.headers["Access-Control-Allow-Headers"] = "content-type, charset, authorization, accept-language, content-length"
     response.headers["Access-Control-Max-Age"] = "600"
     response.headers[
@@ -280,14 +283,35 @@ async def middle(request: Request, call_next):
 
     try:
         response = await asyncio.wait_for(call_next(request), timeout=settings.request_timeout)
-        raw_response = [section async for section in response.body_iterator]
-        response.body_iterator = iterate_in_threadpool(iter(raw_response))
-        raw_data = b"".join(raw_response)
-        if raw_data:
-            try:
-                response_body = json.loads(raw_data)
-            except Exception:
-                response_body = {}
+
+        # Optimize: Only read body for JSON/Text responses and if not too large
+        content_type = response.headers.get("content-type", "")
+        content_length = response.headers.get("content-length")
+
+        should_read_body = True
+        if content_length and int(content_length) > 100 * 1024:  # 100KB limit
+            should_read_body = False
+
+        if not (
+            "application/json" in content_type
+            or "text/" in content_type
+            or "application/xml" in content_type
+        ):
+            should_read_body = False
+
+        # Always read body if it's an error response (likely small JSON)
+        if response.status_code >= 400:
+            should_read_body = True
+
+        if should_read_body:
+            raw_response = [section async for section in response.body_iterator]
+            response.body_iterator = iterate_in_threadpool(iter(raw_response))
+            raw_data = b"".join(raw_response)
+            if raw_data:
+                try:
+                    response_body = json.loads(raw_data)
+                except Exception:
+                    response_body = {}
     except asyncio.TimeoutError:
         response = ORJSONResponse(content={'status':'failed',
             'error': {"code":504, "message": 'Request processing time excedeed limit'}},
@@ -397,17 +421,6 @@ async def middle(request: Request, call_next):
     extra = set_middleware_extra(request, response, start_time, user_shortname, exception_data, response_body)
 
     set_logging(response, extra, request, exception_data)
-
-    #TODO: CHECK THIS
-    # if settings.hide_stack_trace:
-    #     if (
-    #         response_body and isinstance(response_body, dict)
-    #         and "error" in response_body
-    #         and "stack" in response_body["error"]
-    #     ):
-    #         response_body["error"].pop("stack", None)
-    #
-    #     response.body_iterator = iterate_in_threadpool(iter([json.dumps(response_body).encode("utf-8")]))
 
     return response
 

@@ -67,6 +67,14 @@ class AccessControl:
             record_attributes: dict = {},
             entry_shortname: str | None = None
     ):
+        if isinstance(resource_type, str):
+            try:
+                resource_type = ResourceType(resource_type)
+            except ValueError:
+                if settings.debug_perm:
+                     print(f"Debug Access: Invalid resource_type {resource_type}")
+                return False
+
         # print("Checking access for", user_shortname, space_name, subpath, resource_type, action_type)
         if resource_type == ResourceType.space and entry_shortname:
             has_access = await self.check_space_access(
@@ -176,6 +184,12 @@ class AccessControl:
             action_type: ActionType,
             user_shortname: str,
     ) -> bool:
+        if isinstance(resource_type, str):
+            try:
+                resource_type = ResourceType(resource_type)
+            except ValueError:
+                return False
+
         resource_cls = getattr(
             sys.modules["models.core"], camel_case(resource_type)
         )
