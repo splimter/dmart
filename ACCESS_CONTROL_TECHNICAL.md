@@ -28,10 +28,10 @@ graph TD
     E -- Denied --> G[Continue to RBAC]
     D -- No --> G
     G --> H[Load User Permissions]
-    H --> I[Determine Context Conditions<br>(is_active, own)]
+    H --> I["Determine Context Conditions<br>(is_active, own)"]
     I --> J[Traverse Path Hierarchy]
     J --> K{Match Found?}
-    K -- Yes --> L{Check Constraints<br>(Actions, Conditions, Fields)}
+    K -- Yes --> L{"Check Constraints<br>(Actions, Conditions, Fields)"}
     L -- Pass --> F
     L -- Fail --> M[Continue Traversal]
     K -- No --> M
