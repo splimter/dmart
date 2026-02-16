@@ -81,6 +81,9 @@ When a matching Permission key is found, three checks must pass:
     -   **Restricted Fields**: For `update`/`create`, ensures the user is not modifying fields listed in `restricted_fields` (e.g., `status`, `owner`).
     -   **Allowed Values**: Checks if the values being assigned to fields match `allowed_fields_values`.
 
+#### 6. User Profile Protection
+For User Profile updates (`user` resource type), an additional layer of protection exists via the `user_profile_payload_protected_fields` setting in `backend/utils/settings.py`. This global setting prevents users from modifying specific fields in their own profile payload, even if their Role technically allows "update" access.
+
 ## Permission JSON Structure
 
 Permissions are defined as JSON objects. Understanding these keys is critical for configuring access.
