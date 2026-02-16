@@ -47,7 +47,7 @@ Every entity consists of two main parts:
 
 ## Creating and Managing Entities
 
-Entities can be managed through the REST API or, in the default `file` adapter mode, directly via the file system.
+Entities are primarily managed through the REST API. When D-MART is configured in `'file'` mode, they can also be managed directly via the file system.
 
 ### 1. Via REST API (`/managed/request`)
 
@@ -88,7 +88,7 @@ The primary endpoint for CRUD operations is `/managed/request`. It accepts a bat
 *   `update_acl`: Modify Access Control Lists.
 *   `patch`: Patch specific fields.
 
-### 2. Via File System (File Adapter)
+### 2. Via File System ('file' mode only)
 
 When D-MART is configured to use the `file` adapter (default), entities are stored as JSON files in the `spaces` directory.
 
@@ -109,6 +109,10 @@ To "create" an entity manually:
 1.  Create the directory structure.
 2.  Add the `meta.<type>.json` file.
 3.  (Optional) Add the payload file if the body is externalized.
+
+### 3. Via SQL Database ('sql' mode)
+
+When configured in `'sql'` mode, entities are stored in relational database tables. While direct SQL access is possible for administrative tasks, it is recommended to manage entities via the API to ensure data integrity and proper event triggering.
 
 ## Types of Records
 
