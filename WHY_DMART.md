@@ -24,15 +24,15 @@ graph TD
         D_App2[Mobile App] --> API
         D_App3[Microservice] --> API
         API <--> Engine[DMART Engine]
-        Engine <--> Files[(Data Assets<br/>JSON/Text/Binary)]
+        Engine <--> Store[(Data Assets<br/>Files or Database)]
         style Engine fill:#ccffcc,stroke:#333,stroke-width:2px
-        style Files fill:#e1f5fe,stroke:#333,stroke-width:2px
+        style Store fill:#e1f5fe,stroke:#333,stroke-width:2px
     end
 ```
 
-- **Ownership:** Your data lives in open, human-readable flat files (JSON/Text/Binary) on your own file system. No vendor lock-in.
-- **Accessibility:** A unified, standardized API layer means any application or microservice can access your data securely.
-- **Resilience:** With a file-based architecture, your data is inherently backup-ready, version-controlled, and easy to inspect.
+- **Ownership:** Choose between open, human-readable flat files (JSON/Text/Binary) for zero vendor lock-in, or a standard SQL database for enterprise compatibility.
+- **Accessibility:** A unified, standardized API layer means any application or microservice can access your data securely, regardless of the underlying storage.
+- **Resilience:** Whether file-based or SQL-backed, your data is structured for longevity, version control, and easy inspection.
 
 ---
 

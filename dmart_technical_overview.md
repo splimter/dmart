@@ -12,10 +12,13 @@ DMART follows a microservices-friendly architecture with a clear separation betw
 - **Language:** Python 3.12+ with extensive use of `asyncio` for concurrent request handling.
 - **Web Framework:** FastAPI, leveraging Pydantic for data validation and OpenAPI schema generation.
 - **ASGI Server:** Hypercorn.
-- **Data Persistence:**
-    - **Primary Storage:** Flat-file system (JSON, text, binary) organized in a hierarchical folder structure. This ensures data longevity and easy backup/restoration.
-    - **Operational Data Store:** Redis (with RediSearch and RedisJSON modules) used for high-speed indexing, querying, and caching.
-    - **Optional SQL:** Support for PostgreSQL via SQLAlchemy, though flat-file + Redis is the primary mode.
+- **Data Persistence:** DMART operates in two distinct modes:
+    - **'file' Mode:**
+        - **Primary Storage:** Flat-file system (JSON, text, binary) organized in a hierarchical folder structure. This ensures data longevity and easy backup/restoration.
+        - **Indexing & Search:** Redis (with RediSearch and RedisJSON modules) is used for high-speed indexing, querying, and caching.
+    - **'sql' Mode:**
+        - **Primary Storage:** A relational database (e.g., PostgreSQL) serves as the single source of truth, replacing both the file system and Redis.
+        - **Indexing & Search:** Handled natively by the SQL database.
 - **Authentication:** JWT-based stateless authentication.
 
 ```mermaid
@@ -24,9 +27,9 @@ graph TD
     LB -->|ASGI| API[FastAPI Backend]
 
     subgraph "Backend Services"
-        API -->|Read/Write| FS[File System Storage]
-        API -->|Index/Search| Redis[Redis + RediSearch]
-        API -->|Optional| SQL[PostgreSQL]
+        API -->|Mode: 'file'| FS[File System Storage]
+        API -->|Mode: 'file'| Redis[Redis + RediSearch]
+        API -->|Mode: 'sql'| SQL[SQL Database (e.g. PostgreSQL)]
     end
 
     subgraph "Frontend"
@@ -34,7 +37,8 @@ graph TD
         Tauri[Tauri Desktop App] -->|API Calls| API
     end
 
-    FS -->|Data Persistence| Backup[Backup Systems]
+    FS -->|'file' Mode| Backup[Backup Systems]
+    SQL -->|'sql' Mode| Backup
 ```
 
 ### 2.2 Frontend Stack
@@ -105,16 +109,18 @@ classDiagram
 ## 4. Key Features
 
 ### 4.1 Storage & "Data Longevity"
-Data is stored directly on the file system in a human-readable format:
+In **'file' mode**, data is stored directly on the file system in a human-readable format:
 - **Meta Files:** `[subpath]/.dm/[shortname]/meta.[type].json`
 - **Payload Files:** `[subpath]/[payload_file]`
 - **Attachments:** Stored within the `.dm` hidden folder structure.
 This "flat-file first" approach allows the entire Redis index to be rebuilt from disk at any time (`dmart.py reindex`).
 
+In **'sql' mode**, data is stored in normalized database tables, ensuring ACID compliance and standard relational integrity.
+
 ### 4.2 Advanced Search & Querying
-The `/query` endpoint supports a rich query language backed by RediSearch:
+The `/query` endpoint supports a rich query language backed by the underlying engine (RediSearch in 'file' mode, SQL in 'sql' mode):
 - **Filtering:** By space, subpath, resource type, schema, and specific shortnames.
-- **Full-text Search:** fuzzy matching on text fields.
+- **Full-text Search:** Fuzzy matching on text fields.
 - **Aggregation:** Grouping and reducing data (e.g., counts, sums).
 - **Sorting & Pagination:** `limit`, `offset`, `sort_by`.
 - **Specialized Queries:** `history` (audit logs), `events`, `tags`, `reports`.

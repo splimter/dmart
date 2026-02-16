@@ -26,7 +26,7 @@ graph TD
 Finding information is effortless with D-MART's robust search engine.
 *   **Full-Text Search**: Instantly search across all data, including structured fields and text content.
 *   **Advanced Filtering**: Filter results by tags, creation dates, authors, and specific data attributes.
-*   **RediSearch Integration**: Leverages high-performance indexing for lightning-fast query results.
+*   **Adaptable Backend**: Uses RediSearch for high-performance indexing in `'file'` mode, or native SQL capabilities in `'sql'` mode.
 
 ### 3. Collaboration & Workflow Automation
 D-MART includes built-in tools to manage processes and teamwork.
@@ -77,4 +77,4 @@ sequenceDiagram
 Built for flexibility and reliability in various environments.
 *   **Container-Ready**: Easily deployable via Docker/Podman for consistent environments.
 *   **Offline Capability**: Supports air-gapped deployments, allowing data synchronization when connectivity is restored.
-*   **File-System Backed**: Data is stored in a human-readable file structure, ensuring data longevity and ease of backup/restoration.
+*   **Flexible Storage**: Choose between a human-readable file structure (`'file'` mode) for longevity and ease of backup, or a standard SQL database (`'sql'` mode) for enterprise integration.
