@@ -20,6 +20,7 @@ from utils.middleware import CustomRequestMiddleware, ChannelMiddleware
 from utils.jwt import JWTBearer
 from utils.plugin_manager import plugin_manager
 from fastapi import Depends, FastAPI, Request, Response, status
+from fastapi.middleware.gzip import GZipMiddleware
 from utils.logger import logging_schema
 from fastapi.logger import logger
 from fastapi.encoders import jsonable_encoder
@@ -283,7 +284,7 @@ async def middle(request: Request, call_next):
         raw_response = [section async for section in response.body_iterator]
         response.body_iterator = iterate_in_threadpool(iter(raw_response))
         raw_data = b"".join(raw_response)
-        if raw_data:
+        if raw_data and "application/json" in response.headers.get("content-type", ""):
             try:
                 response_body = json.loads(raw_data)
             except Exception:
@@ -418,6 +419,8 @@ app.add_middleware(
     update_request_header=False,
     validator=None,
 )
+
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 
 @app.get("/", include_in_schema=False)
@@ -565,6 +568,11 @@ async def main():
 
 if __name__ == "__main__":
     try:
+        try:
+            import uvloop
+            uvloop.install()
+        except ImportError:
+            pass
         asyncio.run(main())
     except Exception as e:
         print("[!1server]", e)
