@@ -18,6 +18,25 @@ DMART follows a microservices-friendly architecture with a clear separation betw
     - **Optional SQL:** Support for PostgreSQL via SQLAlchemy, though flat-file + Redis is the primary mode.
 - **Authentication:** JWT-based stateless authentication.
 
+```mermaid
+graph TD
+    User[User / Client] -->|HTTP/REST| LB[Load Balancer / Reverse Proxy]
+    LB -->|ASGI| API[FastAPI Backend]
+
+    subgraph "Backend Services"
+        API -->|Read/Write| FS[File System Storage]
+        API -->|Index/Search| Redis[Redis + RediSearch]
+        API -->|Optional| SQL[PostgreSQL]
+    end
+
+    subgraph "Frontend"
+        SPA[Svelte SPA] -->|API Calls| API
+        Tauri[Tauri Desktop App] -->|API Calls| API
+    end
+
+    FS -->|Data Persistence| Backup[Backup Systems]
+```
+
 ### 2.2 Frontend Stack
 - **Framework:** Svelte with Vite as the build tool.
 - **Routing:** Routify (@roxi/routify).
@@ -45,6 +64,43 @@ DMART uses an **Entry-oriented** data model rather than a document-oriented one.
 - **Attachment:** Extends `Meta` for attached resources. Subtypes include `Media`, `Comment`, `Reaction`, `Relationship`.
 - **DataAsset:** Specialized attachments for structured data files like `Json`, `Csv`, `Sqlite`, `Duckdb`, `Parquet`.
 - **Ticket:** Extends `Meta` to support workflow states, reporters, and collaborators.
+
+```mermaid
+classDiagram
+    class Resource {
+        +ConfigDict model_config
+    }
+    class Payload {
+        +ContentType content_type
+        +str body
+    }
+    class Meta {
+        +UUID uuid
+        +str shortname
+        +Translation displayname
+        +Payload payload
+    }
+
+    Resource <|-- Payload
+    Resource <|-- Meta
+
+    Meta <|-- Space
+    Meta <|-- Actor
+    Meta <|-- Group
+    Meta <|-- Content
+    Meta <|-- Schema
+    Meta <|-- Attachment
+
+    Actor <|-- User
+
+    Attachment <|-- DataAsset
+    Attachment <|-- Comment
+    Attachment <|-- Ticket
+
+    DataAsset <|-- Json
+    DataAsset <|-- Csv
+    DataAsset <|-- Sqlite
+```
 
 ## 4. Key Features
 
@@ -93,6 +149,35 @@ An event-driven plugin architecture allows extending functionality:
     - **Hook Plugins:** Intercept actions (`before` or `after`) on resources.
 - **Filtering:** Hooks can target specific actions, resource types, or subpaths.
 - **Lifecycle:** `before_action` hooks can validation or block requests. `after_action` hooks run asynchronously for side effects (notifications, logging).
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Middleware
+    participant Router
+    participant AccessControl
+    participant PluginManager
+    participant DB_Adapter
+
+    Client->>Middleware: HTTP Request
+    Middleware->>Middleware: Auth & Logging
+    Middleware->>Router: Route Request
+    Router->>AccessControl: Check Permissions (RBAC/ACL)
+    alt Access Denied
+        AccessControl-->>Client: 403 Forbidden
+    else Access Granted
+        Router->>PluginManager: Trigger "Before" Hooks
+        PluginManager->>PluginManager: Run Sync Hooks
+
+        Router->>DB_Adapter: Perform Action (CRUD)
+        DB_Adapter->>DB_Adapter: Update File System & Redis
+
+        Router->>PluginManager: Trigger "After" Hooks
+        PluginManager->>PluginManager: Run Async Side Effects
+
+        Router-->>Client: HTTP Response
+    end
+```
 
 ### 4.7 "Data Asset" Management
 DMART natively handles analytical data files:
