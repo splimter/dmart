@@ -16,22 +16,46 @@ Most endpoints require authentication using a JWT token.
 ## Common Data Structures
 
 ### Record
-Represents a resource in the system.
+Represents a resource in the system. This is the primary object for creating or updating entities.
 
 ```json
 {
   "resource_type": "content",
   "shortname": "my-article",
   "subpath": "/blog",
+  "uuid": "550e8400-e29b-41d4-a716-446655440000",
   "attributes": {
     "is_active": true,
+    "slug": "my-article-slug",
     "displayname": { "en": "My Article" },
     "description": { "en": "A description" },
     "tags": ["news", "tech"],
+    "owner_shortname": "jdoe",
+    "owner_group_shortname": "editors",
+    "created_at": "2023-10-01T12:00:00",
+    "updated_at": "2023-10-01T12:00:00",
     "payload": {
       "content_type": "json",
+      "schema_shortname": "article",
       "body": { "title": "Hello World", "content": "..." }
-    }
+    },
+    "acl": [
+      {
+        "user_shortname": "jane",
+        "allowed_actions": ["view", "update"]
+      }
+    ],
+    "relationships": [
+      {
+        "related_to": {
+          "space_name": "data",
+          "type": "user",
+          "subpath": "users",
+          "shortname": "jane"
+        },
+        "attributes": { "role": "editor" }
+      }
+    ]
   }
 }
 ```
@@ -55,11 +79,40 @@ Used for searching and filtering resources.
   "type": "search",
   "space_name": "data",
   "subpath": "/blog",
+  "exact_subpath": false,
+  "filter_types": ["content"],
+  "filter_schema_names": ["article"],
+  "filter_shortnames": [],
+  "filter_tags": ["tech"],
   "search": "@title:Hello*",
+  "from_date": "2023-01-01T00:00:00",
+  "to_date": "2023-12-31T23:59:59",
+  "exclude_fields": ["payload.body"],
+  "include_fields": ["shortname", "displayname"],
+  "highlight_fields": { "description.en": "<b>" },
+  "sort_by": "created_at",
+  "sort_type": "descending",
+  "retrieve_json_payload": true,
+  "retrieve_attachments": false,
+  "retrieve_total": true,
+  "validate_schema": true,
+  "retrieve_lock_status": false,
+  "jq_filter": ". | select(.attributes.is_active == true)",
   "limit": 10,
   "offset": 0,
-  "sort_by": "created_at",
-  "sort_type": "descending"
+  "aggregation_data": {
+    "group_by": ["@tags"],
+    "reducers": [
+      { "reducer_name": "count_distinct", "alias": "count", "args": ["@shortname"] }
+    ]
+  },
+  "join": [
+    {
+      "join_on": "uuid",
+      "alias": "author_details",
+      "query": { ... nested Query object ... }
+    }
+  ]
 }
 ```
 
@@ -77,6 +130,12 @@ Used for searching and filtering resources.
 ### ActionType
 `query`, `view`, `update`, `create`, `delete`, `attach`, `assign`, `move`, `progress_ticket`, `lock`, `unlock`
 
+### QueryType
+`search`, `subpath`, `events`, `history`, `tags`, `random`, `spaces`, `counters`, `reports`, `aggregation`, `attachments`, `attachments_aggregation`
+
+### SortType
+`ascending`, `descending`
+
 ### TaskType
 `query`
 
@@ -85,6 +144,27 @@ Used for searching and filtering resources.
 
 ### Language
 `ar` (Arabic), `en` (English), `ku` (Kurdish), `fr` (French), `tr` (Turkish)
+
+### ConditionType
+`is_active`, `own`
+
+### ReactionType
+`like`, `dislike`, `love`, `care`, `laughing`, `sad`
+
+### LockAction
+`fetch`, `lock`, `extend`, `unlock`, `cancel`
+
+### NotificationType
+`admin`, `system`
+
+### NotificationPriority
+`high`, `medium`, `low`
+
+### PluginType
+`hook`, `api`
+
+### EventListenTime
+`before`, `after`
 
 ---
 
@@ -208,6 +288,12 @@ Resets a user's password (requires appropriate permissions).
 Checks if the provided password is correct for the current user.
 - **Method**: `POST /user/validate_password`
 - **Body**: `password` (string)
+
+#### Social Login Callbacks
+Handles callbacks from social login providers.
+- **Google**: `GET /user/google/callback`
+- **Facebook**: `GET /user/facebook/callback`
+- **Apple**: `GET /user/apple/callback`
 
 ---
 
@@ -333,6 +419,10 @@ Executes a specific task type (e.g., query) on a space.
 #### Apply Alteration
 Applies a recorded alteration to an entry.
 - **Method**: `POST /managed/apply-alteration/{space_name}/{alteration_name}`
+
+#### Shortened URL Redirect
+Redirects a short token to its original URL.
+- **Method**: `GET /managed/s/{token}`
 
 ---
 
