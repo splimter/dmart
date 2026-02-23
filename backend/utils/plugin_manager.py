@@ -33,6 +33,8 @@ class PluginManager:
         ActionType, list[PluginWrapper]
     ] = {}  # {action_type: list_of_plugins_wrappers]}
 
+    active_plugins: list[str] = []
+
     async def load_plugins(self, app: FastAPI, capture_body):
         # Load core plugins
         current = Path(__file__).resolve().parent
@@ -93,6 +95,10 @@ class PluginManager:
                     plugin_wrapper.object = getattr(module, "Plugin")()
 
                     self.store_plugin_in_its_action_dict(plugin_wrapper)
+
+                self.active_plugins.append(plugin_wrapper.shortname)
+                print(f"PLUGIN_LOADED: {plugin_wrapper.shortname}")
+                logger.info(f"PLUGIN_LOADED: {plugin_wrapper.shortname}")
             except Exception as e:
                 logger.error(
                     f"PLUGIN_ERROR, PLUGIN API {plugin_wrapper.shortname} Failed to load, error: {e.args}"
@@ -187,28 +193,27 @@ class PluginManager:
         space_plugins = space.active_plugins
 
         loop = asyncio.get_event_loop()
-        _plugin_model = None
-        try:
-            for plugin_model in self.plugins_wrappers[event.action_type]:
-                _plugin_model = plugin_model
-                if (
-                    plugin_model.shortname in space_plugins
-                    and plugin_model.listen_time == EventListenTime.after
-                    and plugin_model.filters
-                    and self.matched_filters(plugin_model.filters, event)
-                ):
-                    try:
-                        object = plugin_model.object
-                        if isinstance(object, PluginBase):
-                            plugin_execution = object.hook(event)
-                            if iscoroutine(plugin_execution):
+        for plugin_model in self.plugins_wrappers[event.action_type]:
+            if (
+                plugin_model.shortname in space_plugins
+                and plugin_model.listen_time == EventListenTime.after
+                and plugin_model.filters
+                and self.matched_filters(plugin_model.filters, event)
+            ):
+                try:
+                    object = plugin_model.object
+                    if isinstance(object, PluginBase):
+                        plugin_execution = object.hook(event)
+                        if iscoroutine(plugin_execution):
+                            if plugin_model.concurrent:
                                 loop.create_task(self._safe_coroutine_execution(plugin_execution, plugin_model))
-                    except api.Exception as e:
-                        raise e
-                    except Exception as e:
-                        logger.error(f"Plugin:{plugin_model}:{str(e)}")
-        except Exception as e:
-            logger.error(f"Plugin:{_plugin_model}:{str(e)}")
+                            else:
+                                await plugin_execution
+                except api.Exception as e:
+                    raise e
+                except Exception as e:
+                    logger.error(f"Plugin:{plugin_model}:{str(e)}")
+
 
 
 plugin_manager = PluginManager()

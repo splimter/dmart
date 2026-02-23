@@ -37,6 +37,7 @@ from data_adapters.sql.create_tables import (
     Invitations,
     URLShorts,
     OTP,
+    UserPermissionsCache,
 )
 from utils.helpers import (
     arr_remove_common,
@@ -1343,8 +1344,12 @@ class SQLAdapter(BaseDataAdapter):
 
             async with self.get_session() as session:
                 if query.retrieve_total:
-                    _total = (await session.execute(statement_total)).one()
-                    total = int(_total[0])
+                    try:
+                        _total = (await session.execute(statement_total)).one()
+                        total = int(_total[0])
+                    except Exception as e:
+                        logger.warning(f"failed to retrieve total count {e}")
+                        total = -1
                 else:
                     total = -1
                 if query.type == QueryType.counters:
@@ -1369,7 +1374,14 @@ class SQLAdapter(BaseDataAdapter):
                     await session.close()
                 else:
                     # Non-aggregation: fetch ORM instances directly
-                    results = (await session.execute(statement)).scalars().all()
+                    results = []
+                    cursor = (await session.execute(statement)).scalars()
+                    for row in cursor:
+                        try:
+                            _ = row.shortname
+                            results.append(row)
+                        except Exception as e:
+                            logger.warning(f"skipping row due an error: {e}")
                     await session.close()
 
             if is_fetching_spaces:
@@ -1754,6 +1766,8 @@ class SQLAdapter(BaseDataAdapter):
                 try:
                     await session.commit()
                     await session.refresh(data)
+                    if isinstance(meta, (core.User, core.Role, core.Permission)):
+                        await self.clear_cached_user_permission()
                 except Exception as e:
                     await session.rollback()
                     raise e
@@ -1913,6 +1927,9 @@ class SQLAdapter(BaseDataAdapter):
 
             async with self.get_session() as session:
                 session.add(result)
+                await session.commit()
+                if isinstance(meta, (core.User, core.Role, core.Permission)):
+                    await self.clear_cached_user_permission()
 
             # try:
             #     if isinstance(result, (Users, Roles, Permissions)):
@@ -2018,6 +2035,7 @@ class SQLAdapter(BaseDataAdapter):
                         col(table.shortname) == shortname
                     ).values(last_checksum_history=new_checksum)
                 )
+                await session.commit()
 
             return history_diff
         except Exception as e:
@@ -2268,6 +2286,10 @@ class SQLAdapter(BaseDataAdapter):
                         .where(col(Attachments.subpath).startswith(entry_attachment_subpath))
                     await session.execute(statement)
 
+                await session.commit()
+                if isinstance(meta, (core.User, core.Role, core.Permission)):
+                    await self.clear_cached_user_permission()
+
                 # Refresh authz MVs only when Users/Roles/Permissions changed
                 # try:
                 #     if meta.__class__ in (core.User, core.Role, core.Permission):
@@ -2494,6 +2516,19 @@ class SQLAdapter(BaseDataAdapter):
                 print("[!delete_url_shortner_by_token]", e)
                 return False
 
+    @staticmethod
+    def _sanitize_large_integers(obj):
+        _INT64_MIN = -(2 ** 63)
+        _INT64_MAX = 2 ** 63 - 1
+        if isinstance(obj, dict):
+            return {k: SQLAdapter._sanitize_large_integers(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [SQLAdapter._sanitize_large_integers(v) for v in obj]
+        elif isinstance(obj, int) and not isinstance(obj, bool):
+            if obj < _INT64_MIN or obj > _INT64_MAX:
+                return str(obj)
+        return obj
+
     async def _set_query_final_results(self, query, results):
         is_aggregation = query.type == QueryType.aggregation
         is_attachment_query = query.type == QueryType.attachments
@@ -2501,10 +2536,16 @@ class SQLAdapter(BaseDataAdapter):
 
         # Case 1: Attachment query  → Direct conversion of all items
         if is_attachment_query:
-            return [
-                item.to_record(item.subpath, item.shortname)
-                for item in results
-            ]
+            converted = []
+            for item in results:
+                try:
+                    rec = item.to_record(item.subpath, item.shortname)
+                    if rec.attributes:
+                        rec.attributes = self._sanitize_large_integers(rec.attributes)
+                    converted.append(rec)
+                except Exception as e:
+                    logger.warning(f"Skipping attachment record due to conversion error: {e}")
+            return converted
 
         # Case 2: Aggregation query → delegate to existing aggregator
         if is_aggregation:
@@ -2515,15 +2556,20 @@ class SQLAdapter(BaseDataAdapter):
         # Case 3: Standard query → convert and optionally fetch attachments
         attachment_tasks = []
         attachment_indices = []
+        valid_results: list[core.Record] = []
 
-        for idx, item in enumerate(results):
-            rec = item.to_record(item.subpath, item.shortname)
+        for item in results:
+            try:
+                rec = item.to_record(item.subpath, item.shortname)
+            except Exception as e:
+                logger.warning(f"Skipping record due to conversion error: {e}")
+                continue
+
             if rec.resource_type is ResourceType.user and 'password' in rec.attributes:
                 del rec.attributes['password']
 
             if 'query_policies' in rec.attributes:
                 del rec.attributes['query_policies']
-            results[idx] = rec
 
             if query.type == QueryType.history:
                 del rec.attributes['request_headers']
@@ -2556,15 +2602,19 @@ class SQLAdapter(BaseDataAdapter):
                             retrieve_json_payload=True,
                         )
                     )
-                    attachment_indices.append(idx)
+                    attachment_indices.append(len(valid_results))
+
+            if rec.attributes:
+                rec.attributes = self._sanitize_large_integers(rec.attributes)
+            valid_results.append(rec)
 
         # Run all attachment retrievals concurrently
         if attachment_tasks:
             attachments_list = await asyncio.gather(*attachment_tasks)
             for idx, attachments in zip(attachment_indices, attachments_list):
-                results[idx].attachments = attachments
+                valid_results[idx].attachments = attachments
 
-        return results
+        return valid_results
 
     async def clear_failed_password_attempts(self, user_shortname: str) -> bool:
         async with self.get_session() as session:
@@ -2886,6 +2936,14 @@ class SQLAdapter(BaseDataAdapter):
     async def generate_user_permissions(self, user_shortname: str) -> dict:
         user_permissions: dict = {}
 
+        user_meta = await self.load_or_none(
+            settings.management_space,
+            settings.users_subpath,
+            user_shortname,
+            core.User,
+        )
+        owner_shortname = user_meta.owner_shortname if user_meta else None
+
         user_roles = await self.get_user_roles(user_shortname)
 
         for _, role in user_roles.items():
@@ -2899,7 +2957,9 @@ class SQLAdapter(BaseDataAdapter):
             for permission in role_permissions:
                 for space_name, permission_subpaths in permission.subpaths.items():
                     for permission_subpath in permission_subpaths:
-                        permission_subpath = trans_magic_words(permission_subpath, user_shortname)
+                        permission_subpath = trans_magic_words(
+                            permission_subpath, user_shortname, owner_shortname
+                        )
                         for permission_resource_types in permission.resource_types:
                             actions = set(permission.actions)
                             conditions = set(permission.conditions)
@@ -2931,13 +2991,34 @@ class SQLAdapter(BaseDataAdapter):
         return user_permissions
 
     async def get_user_permissions(self, user_shortname: str) -> dict:
-        return await self.generate_user_permissions(user_shortname)
+        async with self.get_session() as session:
+            statement = select(UserPermissionsCache).where(
+                col(UserPermissionsCache.user_shortname) == user_shortname
+            )
+            cached = (await session.execute(statement)).scalars().first()
+            if cached:
+                return cached.permissions # type: ignore
+
+        user_permissions = await self.generate_user_permissions(user_shortname)
+
+        async with self.get_session() as session:
+            cache_entry = UserPermissionsCache(
+                user_shortname=user_shortname,
+                permissions=user_permissions
+            )
+            await session.merge(cache_entry)
+            await session.commit()
+
+        return user_permissions
 
     async def get_user_by_criteria(self, key: str, value: str) -> str | None:
-        _user = await self.get_entry_by_criteria(
-            {key: value},
-            Users
-        )
+        async with self.get_session() as session:
+            statement = select(Users).where(
+                getattr(Users, key) == value,
+                col(Users.space_name) == settings.management_space,
+                col(Users.subpath) == f"/{settings.users_subpath}"
+            )
+            _user = (await session.execute(statement)).scalars().first()
         if _user is None:
             return None
         return str(_user.shortname)
@@ -2971,7 +3052,12 @@ class SQLAdapter(BaseDataAdapter):
                     print(f"Error: {e}")
 
     async def create_user_premission_index(self) -> None:
-        pass
+        return None
+
+    async def clear_cached_user_permission(self) -> None:
+        async with self.get_session() as session:
+            await session.execute(delete(UserPermissionsCache))
+            await session.commit()
 
     async def store_modules_to_redis(self, roles, groups, permissions) -> None:
         pass

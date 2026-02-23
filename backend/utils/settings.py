@@ -73,6 +73,9 @@ class Settings(BaseSettings):
     current_user_mw: str = (
         "__current_user__"  # used in access control refers to current logged-in user
     )
+    current_user_owner_mw: str = (
+        "__current_user__owner__"  # used in access control refers to the user who created this user (owner)
+    )
     root_subpath_mw : str = "__root__"
 
     otp_token_ttl: int = 60 * 5
@@ -92,6 +95,7 @@ class Settings(BaseSettings):
     mail_encryption: str = "tls"
     mail_from_address: str = "noreply@admin.com"
     mail_from_name: str = ""
+    mail_use_tls: bool = False
 
     files_query: str = "scandir"
     mock_smpp_api: bool = True
