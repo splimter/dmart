@@ -3,6 +3,7 @@ from uuid import uuid4
 import pytest
 import os
 import json
+import tempfile
 from pathlib import Path
 from sqlmodel import Session, create_engine, text, SQLModel
 from data_adapters.sql.create_tables import Attachments, Entries, Spaces, Histories
@@ -102,19 +103,24 @@ def test_json_to_db_migration(setup_environment):
 
     engine = setup_environment
 
+    # Use a secure temporary directory
+    temp_dir_obj = tempfile.TemporaryDirectory()
+    base_dir = temp_dir_obj.name
+    test_space_dir = os.path.join(base_dir, "test_space")
+
     # Create a complex mock directory structure and files for different entry types
-    os.makedirs("/tmp/test_space/.dm", exist_ok=True)
-    with open("/tmp/test_space/.dm/meta.space.json", "w") as f:
+    os.makedirs(f"{test_space_dir}/.dm", exist_ok=True)
+    with open(f"{test_space_dir}/.dm/meta.space.json", "w") as f:
         json.dump({"key": "value"}, f)
 
     # Create more directories and files for the migration
-    os.makedirs("/tmp/test_space/dir1", exist_ok=True)
-    with open("/tmp/test_space/dir1/history.jsonl", "w") as f:
+    os.makedirs(f"{test_space_dir}/dir1", exist_ok=True)
+    with open(f"{test_space_dir}/dir1/history.jsonl", "w") as f:
         f.write(json.dumps({"key": "history"}) + "\n")
 
     # Create attachments folder and files
-    os.makedirs("/tmp/test_space/dir1/attachments", exist_ok=True)
-    with open("/tmp/test_space/dir1/attachments/meta.attachments.json", "w") as f:
+    os.makedirs(f"{test_space_dir}/dir1/attachments", exist_ok=True)
+    with open(f"{test_space_dir}/dir1/attachments/meta.attachments.json", "w") as f:
         json.dump(
             {
                 "uuid": str(uuid4()),
@@ -128,19 +134,19 @@ def test_json_to_db_migration(setup_environment):
         )
 
     # Create ticket-related file
-    with open("/tmp/test_space/dir1/meta.ticket.json", "w") as f:
+    with open(f"{test_space_dir}/dir1/meta.ticket.json", "w") as f:
         json.dump({"state": "open", "is_open": True, "reporter": "user1", "subpath": "/dir1/ticket"}, f)
 
     # Create user meta file
-    with open("/tmp/test_space/.dm/meta.user.json", "w") as f:
+    with open(f"{test_space_dir}/.dm/meta.user.json", "w") as f:
         json.dump({"resource_type": "user", "firebase_token": "firebase_token", "language": "en"}, f)
 
     # Create role meta file
-    with open("/tmp/test_space/.dm/meta.role.json", "w") as f:
+    with open(f"{test_space_dir}/.dm/meta.role.json", "w") as f:
         json.dump({"resource_type": "role", "permissions": ["read", "write"]}, f)
 
     # Create permission meta file
-    with open("/tmp/test_space/.dm/meta.permission.json", "w") as f:
+    with open(f"{test_space_dir}/.dm/meta.permission.json", "w") as f:
         json.dump(
             {
                 "resource_type": "permission",
@@ -153,8 +159,8 @@ def test_json_to_db_migration(setup_environment):
     # Run the migration script
     try:
         with Session(engine) as session:
-            for root, dirs, _ in os.walk("/tmp/test_space"):
-                tmp = root.replace("/tmp/test_space", "")
+            for root, dirs, _ in os.walk(test_space_dir):
+                tmp = root.replace(test_space_dir, "")
                 if tmp == "":
                     continue
                 if tmp[0] == "/":
@@ -216,16 +222,6 @@ def test_json_to_db_migration(setup_environment):
     except Exception as e:
         print(f"Migration failed: {e}")
         assert False  # Fail the test if there is any exception
-
-    # Clean up the mock directory structure
-    os.remove("/tmp/test_space/.dm/meta.space.json")
-    os.remove("/tmp/test_space/dir1/history.jsonl")
-    os.remove("/tmp/test_space/dir1/attachments/meta.attachments.json")
-    os.remove("/tmp/test_space/dir1/meta.ticket.json")
-    os.remove("/tmp/test_space/.dm/meta.user.json")
-    os.remove("/tmp/test_space/.dm/meta.role.json")
-    os.remove("/tmp/test_space/.dm/meta.permission.json")
-    os.rmdir("/tmp/test_space/dir1/attachments")
-    os.rmdir("/tmp/test_space/.dm")
-    os.rmdir("/tmp/test_space/dir1")
-    os.rmdir("/tmp/test_space")
+    finally:
+        # Clean up the mock directory structure
+        temp_dir_obj.cleanup()

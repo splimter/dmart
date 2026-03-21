@@ -42,6 +42,7 @@ def login(username, password, target):
         f"{target}/user/login",
         headers=headers,
         json=body,
+        timeout=10,
     )
 
     if response.ok:
@@ -101,11 +102,13 @@ def fetch_locators(space, subpath, target):
         f"{target}/managed/query",
         headers=target_headers,
         json=body,
+        timeout=30,
     )
     response_local = requests.post(
         f"http://{settings.listening_host}:{settings.listening_port}/managed/query",
         headers=local_headers,
         json=body,
+        timeout=30,
     )
 
     if response_target.ok:
@@ -154,6 +157,7 @@ def apply_changes(space, target, added_records, removed_records, different_recor
         f"{target}/managed/request",
         headers=target_headers,
         json=request_data,
+        timeout=30,
     )
     if response.ok:
         print("records:", response.json())
@@ -169,6 +173,7 @@ def apply_changes(space, target, added_records, removed_records, different_recor
         f"{target}/managed/request",
         headers=target_headers,
         json=request_data,
+        timeout=30,
     )
     if response.ok:
         print("records:", response.json())
@@ -184,6 +189,7 @@ def apply_changes(space, target, added_records, removed_records, different_recor
         f"{target}/managed/request",
         headers=target_headers,
         json=request_data,
+        timeout=30,
     )
     if response.ok:
         print("records:", response.json())

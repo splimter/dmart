@@ -162,6 +162,12 @@ class AccessControl:
         action_type: ActionType,
         user_shortname: str,
     ) -> bool:
+        try:
+            # Ensure it's a valid enum value
+            ResourceType(resource_type)
+        except ValueError:
+            return False
+
         resource_cls = getattr(sys.modules["models.core"], camel_case(resource_type))
 
         try:
