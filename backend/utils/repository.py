@@ -45,7 +45,8 @@ async def serve_query(query: api.Query, logged_in_user: str) -> tuple[int, list[
                 _input_local = jq_dict_parser(_input_local)
                 input_json = json.dumps(_input_local)
 
-                cmd = ["jq", "-c", query.jq_filter]
+                # Use '--' to signify end of options to prevent command injection
+                cmd = ["jq", "-c", "--", query.jq_filter]
 
                 try:
                     completed = subprocess.run(

@@ -1602,7 +1602,8 @@ class SQLAdapter(BaseDataAdapter):
 
                         input_json = json.dumps(_input_local)
                         vectorized_filter = f"map( [ {sub_query.jq_filter} ] )"
-                        cmd = ["jq", "-c", vectorized_filter]
+                        # Use '--' to signify end of options to prevent command injection
+                        cmd = ["jq", "-c", "--", vectorized_filter]
 
                         try:
                             completed = subprocess.run(

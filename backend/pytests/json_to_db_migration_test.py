@@ -222,6 +222,6 @@ def test_json_to_db_migration(setup_environment):
     except Exception as e:
         print(f"Migration failed: {e}")
         assert False  # Fail the test if there is any exception
-
-    # Clean up the mock directory structure
-    temp_dir_obj.cleanup()
+    finally:
+        # Clean up the mock directory structure
+        temp_dir_obj.cleanup()
