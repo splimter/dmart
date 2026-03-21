@@ -303,7 +303,7 @@ async def set_sql_statement_from_query(table, statement, query, is_for_count):
                 if field.startswith("payload."):
                     payload_field = field.replace("payload.", "", 1)
                     parts = payload_field.split(".")
-                    payload_path = "->".join([f"'{part}'" for part in parts])
+                    payload_path = "->".join([f"'{part.replace(chr(39), chr(39)*2)}'" for part in parts])
 
                     payload_path_splited = payload_path.split("->")
                     if len(payload_path_splited) > 1:
@@ -1602,7 +1602,7 @@ class SQLAdapter(BaseDataAdapter):
 
                         input_json = json.dumps(_input_local)
                         vectorized_filter = f"map( [ {sub_query.jq_filter} ] )"
-                        cmd = ["jq", "-c", vectorized_filter]
+                        cmd = ["jq", "-c", "--", vectorized_filter]
 
                         try:
                             completed = subprocess.run(
