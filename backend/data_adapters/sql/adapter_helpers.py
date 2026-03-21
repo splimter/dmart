@@ -90,10 +90,12 @@ def subpath_checker(subpath: str):
 def transform_keys_to_sql(path):
     parts = path.split(".")
     sql_path = parts[0]
+    if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", sql_path):
+        raise ValueError(f"Invalid column name in JSON path: {sql_path}")
     if len(parts[1:-1]) != 0:
-        sql_path += " -> " + " -> ".join([f"'{part}'" for part in parts[1:-1]])
-    sql_path += f" ->> '{parts[-1]}'"
-    sql_path.replace("->  ->>", "->>")
+        sql_path += " -> " + " -> ".join([f"'{part.replace(chr(39), chr(39)*2)}'" for part in parts[1:-1]])
+    sql_path += f" ->> '{parts[-1].replace(chr(39), chr(39)*2)}'"
+    sql_path = sql_path.replace("->  ->>", "->>")
     return sql_path
 
 
