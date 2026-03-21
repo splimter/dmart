@@ -86,8 +86,13 @@ async def get_db_entries_count_history() -> dict[str, Any]:
             for table in tables:
                 if table == "count_history" or "log" in table or "history" in table:
                     continue
+                # Strict validation of table names against standard schema identifiers
+                if not isinstance(table, str) or not table.replace("_", "").isalnum():
+                    continue
                 try:
-                    count_res = await session.execute(text(f"SELECT space_name, count(*) FROM {table} GROUP BY space_name"))
+                    # Sanitize table name by quoting
+                    safe_table = f'"{table}"'
+                    count_res = await session.execute(text(f"SELECT space_name, count(*) FROM {safe_table} GROUP BY space_name"))
                     for row in count_res.fetchall():
                         space_name, count = row[0], row[1]
                         if space_name:
