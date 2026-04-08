@@ -1,0 +1,464 @@
+[
+  {
+    "path": "/",
+    "methods": [
+      "GET"
+    ],
+    "name": "root"
+  },
+  {
+    "path": "/user/check-existing",
+    "methods": [
+      "GET"
+    ],
+    "name": "check_existing_user_fields"
+  },
+  {
+    "path": "/user/create",
+    "methods": [
+      "POST"
+    ],
+    "name": "create_user"
+  },
+  {
+    "path": "/user/login",
+    "methods": [
+      "POST"
+    ],
+    "name": "login"
+  },
+  {
+    "path": "/user/profile",
+    "methods": [
+      "GET"
+    ],
+    "name": "get_profile"
+  },
+  {
+    "path": "/user/profile",
+    "methods": [
+      "POST"
+    ],
+    "name": "update_profile"
+  },
+  {
+    "path": "/user/logout",
+    "methods": [
+      "POST"
+    ],
+    "name": "logout"
+  },
+  {
+    "path": "/user/delete",
+    "methods": [
+      "POST"
+    ],
+    "name": "delete_account"
+  },
+  {
+    "path": "/user/otp-request",
+    "methods": [
+      "POST"
+    ],
+    "name": "otp_request"
+  },
+  {
+    "path": "/user/otp-request-login",
+    "methods": [
+      "POST"
+    ],
+    "name": "otp_request_login"
+  },
+  {
+    "path": "/user/password-reset-request",
+    "methods": [
+      "POST"
+    ],
+    "name": "reset_password"
+  },
+  {
+    "path": "/user/otp-confirm",
+    "methods": [
+      "POST"
+    ],
+    "name": "confirm_otp"
+  },
+  {
+    "path": "/user/reset",
+    "methods": [
+      "POST"
+    ],
+    "name": "user_reset"
+  },
+  {
+    "path": "/user/validate_password",
+    "methods": [
+      "POST"
+    ],
+    "name": "validate_password"
+  },
+  {
+    "path": "/user/google/callback",
+    "methods": [
+      "GET"
+    ],
+    "name": "google_profile"
+  },
+  {
+    "path": "/user/facebook/callback",
+    "methods": [
+      "GET"
+    ],
+    "name": "facebook_login"
+  },
+  {
+    "path": "/user/apple/callback",
+    "methods": [
+      "GET"
+    ],
+    "name": "apple_login"
+  },
+  {
+    "path": "/user/google/mobile-login",
+    "methods": [
+      "POST"
+    ],
+    "name": "google_mobile_login"
+  },
+  {
+    "path": "/user/facebook/mobile-login",
+    "methods": [
+      "POST"
+    ],
+    "name": "facebook_mobile_login"
+  },
+  {
+    "path": "/user/apple/mobile-login",
+    "methods": [
+      "POST"
+    ],
+    "name": "apple_mobile_login"
+  },
+  {
+    "path": "/managed/import",
+    "methods": [
+      "POST"
+    ],
+    "name": "import_data"
+  },
+  {
+    "path": "/managed/export",
+    "methods": [
+      "POST"
+    ],
+    "name": "export_data"
+  },
+  {
+    "path": "/managed/csv/{space_name}",
+    "methods": [
+      "POST"
+    ],
+    "name": "generate_csv_from_report_saved_query"
+  },
+  {
+    "path": "/managed/csv",
+    "methods": [
+      "POST"
+    ],
+    "name": "csv_entries"
+  },
+  {
+    "path": "/managed/query",
+    "methods": [
+      "POST"
+    ],
+    "name": "query_entries"
+  },
+  {
+    "path": "/managed/request",
+    "methods": [
+      "POST"
+    ],
+    "name": "serve_request"
+  },
+  {
+    "path": "/managed/progress-ticket/{space_name}/{subpath:path}/{shortname}/{action}",
+    "methods": [
+      "PUT"
+    ],
+    "name": "update_state"
+  },
+  {
+    "path": "/managed/payload/{resource_type}/{space_name}/{subpath:path}/{shortname}.{schema_shortname}.{ext}",
+    "methods": [
+      "GET"
+    ],
+    "name": "retrieve_entry_or_attachment_payload"
+  },
+  {
+    "path": "/managed/payload/{resource_type}/{space_name}/{subpath:path}/{shortname}.{ext}",
+    "methods": [
+      "GET"
+    ],
+    "name": "retrieve_entry_or_attachment_payload"
+  },
+  {
+    "path": "/managed/resource_with_payload",
+    "methods": [
+      "POST"
+    ],
+    "name": "create_or_update_resource_with_payload"
+  },
+  {
+    "path": "/managed/resources_from_csv/{resource_type}/{space_name}/{subpath:path}/{schema_shortname}",
+    "methods": [
+      "POST"
+    ],
+    "name": "import_resources_from_csv"
+  },
+  {
+    "path": "/managed/entry/{resource_type}/{space_name}/{subpath:path}/{shortname}",
+    "methods": [
+      "GET"
+    ],
+    "name": "retrieve_entry_meta"
+  },
+  {
+    "path": "/managed/byuuid/{uuid}",
+    "methods": [
+      "GET"
+    ],
+    "name": "get_entry_by_uuid"
+  },
+  {
+    "path": "/managed/byslug/{slug}",
+    "methods": [
+      "GET"
+    ],
+    "name": "get_entry_by_slug"
+  },
+  {
+    "path": "/managed/health/{health_type}/{space_name}",
+    "methods": [
+      "GET"
+    ],
+    "name": "get_space_report"
+  },
+  {
+    "path": "/managed/lock/{resource_type}/{space_name}/{subpath:path}/{shortname}",
+    "methods": [
+      "PUT"
+    ],
+    "name": "lock_entry"
+  },
+  {
+    "path": "/managed/lock/{space_name}/{subpath:path}/{shortname}",
+    "methods": [
+      "DELETE"
+    ],
+    "name": "cancel_lock"
+  },
+  {
+    "path": "/managed/reload-security-data",
+    "methods": [
+      "GET"
+    ],
+    "name": "reload_security_data"
+  },
+  {
+    "path": "/managed/excute/{task_type}/{space_name}",
+    "methods": [
+      "POST"
+    ],
+    "name": "execute"
+  },
+  {
+    "path": "/managed/s/{token}",
+    "methods": [
+      "GET"
+    ],
+    "name": "shoting_url"
+  },
+  {
+    "path": "/managed/apply-alteration/{space_name}/{alteration_name}",
+    "methods": [
+      "POST"
+    ],
+    "name": "apply_alteration"
+  },
+  {
+    "path": "/qr/generate/{resource_type}/{space_name}/{subpath:path}/{shortname}",
+    "methods": [
+      "GET"
+    ],
+    "name": "generate_qr_user_profile"
+  },
+  {
+    "path": "/qr/validate",
+    "methods": [
+      "POST"
+    ],
+    "name": "validate_qr_user_profile"
+  },
+  {
+    "path": "/public/query",
+    "methods": [
+      "POST"
+    ],
+    "name": "query_entries"
+  },
+  {
+    "path": "/public/entry/{resource_type}/{space_name}/{subpath:path}/{shortname}",
+    "methods": [
+      "GET"
+    ],
+    "name": "retrieve_entry_meta"
+  },
+  {
+    "path": "/public/payload/{resource_type}/{space_name}/{subpath:path}/{shortname}.{ext}",
+    "methods": [
+      "GET"
+    ],
+    "name": "retrieve_entry_or_attachment_payload"
+  },
+  {
+    "path": "/public/query/{type}/{space_name}/{subpath:path}",
+    "methods": [
+      "GET"
+    ],
+    "name": "query_via_urlparams"
+  },
+  {
+    "path": "/public/resource_with_payload",
+    "methods": [
+      "POST"
+    ],
+    "name": "create_or_update_resource_with_payload"
+  },
+  {
+    "path": "/public/submit/{space_name}/{resource_type}/{workflow_shortname}/{schema_shortname}/{subpath:path}",
+    "methods": [
+      "POST"
+    ],
+    "name": "create_entry"
+  },
+  {
+    "path": "/public/submit/{space_name}/{resource_type}/{schema_shortname}/{subpath:path}",
+    "methods": [
+      "POST"
+    ],
+    "name": "create_entry"
+  },
+  {
+    "path": "/public/submit/{space_name}/{schema_shortname}/{subpath:path}",
+    "methods": [
+      "POST"
+    ],
+    "name": "create_entry"
+  },
+  {
+    "path": "/public/attach/{space_name}",
+    "methods": [
+      "POST"
+    ],
+    "name": "create_attachment"
+  },
+  {
+    "path": "/public/excute/{task_type}/{space_name}",
+    "methods": [
+      "POST"
+    ],
+    "name": "excute"
+  },
+  {
+    "path": "/public/byuuid/{uuid}",
+    "methods": [
+      "GET"
+    ],
+    "name": "get_entry_by_uuid"
+  },
+  {
+    "path": "/public/byslug/{slug}",
+    "methods": [
+      "GET"
+    ],
+    "name": "get_entry_by_slug"
+  },
+  {
+    "path": "/info/me",
+    "methods": [
+      "GET"
+    ],
+    "name": "get_me"
+  },
+  {
+    "path": "/info/settings",
+    "methods": [
+      "GET"
+    ],
+    "name": "get_settings"
+  },
+  {
+    "path": "/info/manifest",
+    "methods": [
+      "GET"
+    ],
+    "name": "get_manifest"
+  },
+  {
+    "path": "/db_size_info/",
+    "methods": [
+      "GET"
+    ],
+    "name": "get_db_size_info"
+  },
+  {
+    "path": "/db_entries_count_history/",
+    "methods": [
+      "GET"
+    ],
+    "name": "get_db_entries_count_history"
+  },
+  {
+    "path": "/{x:path}",
+    "methods": [
+      "OPTIONS"
+    ],
+    "name": "myoptions"
+  },
+  {
+    "path": "/{x:path}",
+    "methods": [
+      "DELETE"
+    ],
+    "name": "catchall"
+  },
+  {
+    "path": "/{x:path}",
+    "methods": [
+      "PATCH"
+    ],
+    "name": "catchall"
+  },
+  {
+    "path": "/{x:path}",
+    "methods": [
+      "PUT"
+    ],
+    "name": "catchall"
+  },
+  {
+    "path": "/{x:path}",
+    "methods": [
+      "POST"
+    ],
+    "name": "catchall"
+  },
+  {
+    "path": "/{x:path}",
+    "methods": [
+      "GET"
+    ],
+    "name": "catchall"
+  }
+]
